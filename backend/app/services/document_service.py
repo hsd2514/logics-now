@@ -1,0 +1,184 @@
+import os
+import re
+import uuid
+from typing import List, Optional, Tuple
+from sqlalchemy.orm import Session
+from fastapi import UploadFile
+from html.parser import HTMLParser
+
+from app.models.document import Document, DocumentStatus
+from app.pipeline.preprocessor import Preprocessor
+from app.pipeline.ocr_engine import OCREngine
+from app.pipeline.entity_extractor import EntityExtractor
+from app.config import get_settings
+
+settings = get_settings()
+
+class HTMLTextExtractor(HTMLParser):
+    """Extract text content from HTML."""
+    def __init__(self):
+        super().__init__()
+        self.text_parts = []
+        self.current_tag = None
+        
+    def handle_starttag(self, tag, attrs):
+        self.current_tag = tag
+        
+    def handle_data(self, data):
+        text = data.strip()
+        if text:
+            self.text_parts.append(text)
+    
+    def get_text(self):
+        return ' '.join(self.text_parts)
+
+class DocumentService:
+    def __init__(self):
+        self.preprocessor = Preprocessor()
+        self.ocr_engine = OCREngine()
+        self.entity_extractor = EntityExtractor()
+        self.upload_dir = settings.upload_dir
+        
+        # Ensure upload directory exists
+        os.makedirs(self.upload_dir, exist_ok=True)
+    
+    async def upload_and_process(
+        self, 
+        db: Session, 
+        file: UploadFile, 
+        doc_type: str
+    ) -> Document:
+        """Upload a document and process it through the pipeline."""
+        # Generate unique filename
+        file_id = str(uuid.uuid4())
+        file_ext = os.path.splitext(file.filename)[1]
+        saved_filename = f"{file_id}{file_ext}"
+        file_path = os.path.join(self.upload_dir, saved_filename)
+        
+        # Save file
+        content = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+        
+        # Create document record
+        document = Document(
+            id=file_id,
+            type=doc_type.upper(),
+            file_name=file.filename,
+            file_path=file_path,
+            status=DocumentStatus.PENDING
+        )
+        db.add(document)
+        db.commit()
+        
+        # Process document
+        try:
+            document = await self.process_document(db, document)
+        except Exception as e:
+            document.status = DocumentStatus.ERROR
+            document.processing_error = str(e)
+            db.commit()
+        
+        return document
+    
+    async def process_document(self, db: Session, document: Document) -> Document:
+        """Process a document through preprocessing, OCR, and entity extraction."""
+        file_ext = os.path.splitext(document.file_path)[1].lower()
+        
+        # Check if HTML file - process directly without OCR
+        if file_ext in ['.html', '.htm']:
+            return await self.process_html_document(db, document)
+        
+        # Image/PDF processing with OCR
+        # Stage 1: Preprocessing
+        enhanced_image, quality_score = self.preprocessor.process(document.file_path)
+        
+        # Stage 2: OCR
+        ocr_text, text_blocks, ocr_confidence = self.ocr_engine.extract(enhanced_image)
+        
+        # Stage 3: Entity Extraction
+        entities, ner_confidence = self.entity_extractor.extract_for_document_type(
+            ocr_text, document.type
+        )
+        
+        # Update document
+        document.ocr_text = ocr_text
+        document.ocr_confidence = ocr_confidence
+        document.text_blocks = self.ocr_engine.blocks_to_dict(text_blocks)
+        document.entities = entities
+        document.status = DocumentStatus.PROCESSED
+        
+        db.commit()
+        return document
+    
+    async def process_html_document(self, db: Session, document: Document) -> Document:
+        """Process HTML document - extract text directly without OCR."""
+        # Read HTML file
+        with open(document.file_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # Extract text from HTML
+        parser = HTMLTextExtractor()
+        parser.feed(html_content)
+        extracted_text = parser.get_text()
+        
+        # Stage 3: Entity Extraction
+        entities, ner_confidence = self.entity_extractor.extract_for_document_type(
+            extracted_text, document.type
+        )
+        
+        # Update document - HTML is perfect quality
+        document.ocr_text = extracted_text
+        document.ocr_confidence = 1.0  # Perfect extraction from HTML
+        document.text_blocks = []  # No spatial data for HTML
+        document.entities = entities
+        document.status = DocumentStatus.PROCESSED
+        
+        db.commit()
+        return document
+    
+    def get_document(self, db: Session, doc_id: str) -> Optional[Document]:
+        """Get a document by ID."""
+        return db.query(Document).filter(Document.id == doc_id).first()
+    
+    def get_documents(
+        self, 
+        db: Session, 
+        doc_type: Optional[str] = None,
+        status: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> Tuple[List[Document], int]:
+        """Get documents with optional filtering."""
+        query = db.query(Document)
+        
+        if doc_type:
+            query = query.filter(Document.type == doc_type.upper())
+        if status:
+            query = query.filter(Document.status == status)
+        
+        total = query.count()
+        documents = query.order_by(Document.uploaded_at.desc()).offset(skip).limit(limit).all()
+        
+        return documents, total
+    
+    def get_unmatched_documents(self, db: Session, doc_type: str) -> List[Document]:
+        """Get processed documents that haven't been matched yet."""
+        return db.query(Document).filter(
+            Document.type == doc_type.upper(),
+            Document.status == DocumentStatus.PROCESSED
+        ).all()
+    
+    def delete_document(self, db: Session, doc_id: str) -> bool:
+        """Delete a document and its file."""
+        document = self.get_document(db, doc_id)
+        if not document:
+            return False
+        
+        # Delete file
+        if os.path.exists(document.file_path):
+            os.remove(document.file_path)
+        
+        db.delete(document)
+        db.commit()
+        return True
