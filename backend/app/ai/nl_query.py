@@ -1,5 +1,5 @@
 from typing import Dict, Optional, AsyncGenerator
-from openai import OpenAI
+import google.generativeai as genai
 import json
 from app.config import get_settings
 
@@ -9,8 +9,11 @@ class NLQueryParser:
     """Novel Feature: Natural Language Query to Database Filters"""
     
     def __init__(self):
-        self.client = OpenAI(api_key=settings.openai_api_key) if settings.openai_api_key else None
-        self.system_prompt = """You are a query parser for a logistics document system.
+        if settings.google_api_key:
+            genai.configure(api_key=settings.google_api_key)
+            self.model = genai.GenerativeModel(
+                model_name="gemini-2.0-flash",
+                system_instruction="""You are a query parser for a logistics document system.
 Convert natural language queries into structured filters.
 
 Available filter fields:
@@ -30,25 +33,24 @@ Return ONLY valid JSON with applicable filters. Example:
 
 If the query is unclear, return {"error": "explanation"}.
 """
+            )
+        else:
+            self.model = None
     
     def parse(self, query: str) -> Dict:
         """Parse natural language query into filters."""
-        if not self.client:
+        if not self.model:
             return self._fallback_parse(query)
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": query}
-                ],
-                max_tokens=200
+            response = self.model.generate_content(
+                query,
+                generation_config=genai.GenerationConfig(
+                    max_output_tokens=200,
+                    response_mime_type="application/json"  # Force JSON output
+                )
             )
-            
-            result = response.choices[0].message.content
-            # Try to parse JSON
-            return json.loads(result)
+            return json.loads(response.text)
         except json.JSONDecodeError:
             return self._fallback_parse(query)
         except Exception as e:
@@ -56,29 +58,20 @@ If the query is unclear, return {"error": "explanation"}.
     
     async def parse_stream(self, query: str) -> AsyncGenerator[str, None]:
         """Stream the parsing process for UI feedback."""
-        if not self.client:
+        if not self.model:
             result = self._fallback_parse(query)
             yield json.dumps(result)
             return
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": query}
-                ],
+            response = await self.model.generate_content_async(
+                query,
                 stream=True,
-                max_tokens=200
+                generation_config=genai.GenerationConfig(max_output_tokens=200)
             )
-            
-            full_response = ""
-            for chunk in response:
-                if chunk.choices[0].delta.content:
-                    content = chunk.choices[0].delta.content
-                    full_response += content
-                    yield content
-            
+            async for chunk in response:
+                if chunk.text:
+                    yield chunk.text
         except Exception as e:
             yield json.dumps({"error": str(e)})
     

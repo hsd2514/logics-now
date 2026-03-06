@@ -15,7 +15,6 @@ dependencies = [
     "pillow",
     "numpy",
     "scikit-learn",
-    "openai",
     "google-generativeai",
     "python-dotenv",
     "websockets",

@@ -1,5 +1,5 @@
 from typing import AsyncGenerator, Dict, Optional
-from openai import OpenAI
+import google.generativeai as genai
 from app.config import get_settings
 
 settings = get_settings()
@@ -8,12 +8,20 @@ class DocumentChat:
     """Novel Feature: Chat with documents using AI"""
     
     def __init__(self):
-        self.client = OpenAI(api_key=settings.openai_api_key) if settings.openai_api_key else None
-        self.system_prompt = """You are an AI assistant helping with logistics document analysis. 
-You have access to the extracted text and entities from a document (LR, POD, or Invoice).
-Answer questions accurately based on the document content.
-If information is not available in the document, say so clearly.
-Be concise and helpful."""
+        if settings.google_api_key:
+            genai.configure(api_key=settings.google_api_key)
+            self.model = genai.GenerativeModel(
+                model_name="gemini-2.0-flash",
+                system_instruction=(
+                    "You are an AI assistant helping with logistics document analysis. "
+                    "You have access to the extracted text and entities from a document (LR, POD, or Invoice). "
+                    "Answer questions accurately based on the document content. "
+                    "If information is not available in the document, say so clearly. "
+                    "Be concise and helpful."
+                )
+            )
+        else:
+            self.model = None
     
     async def chat_stream(
         self, 
@@ -23,11 +31,11 @@ Be concise and helpful."""
         chat_history: list = None
     ) -> AsyncGenerator[str, None]:
         """Stream chat response about a document."""
-        if not self.client:
-            yield "Error: OpenAI API key not configured"
+        if not self.model:
+            yield "Error: Google API key not configured"
             return
         
-        # Build context
+        # Build document context
         context = f"""Document Content:
 {document_text[:3000]}
 
@@ -43,28 +51,31 @@ Extracted Entities:
 - GST Number: {document_entities.get('gst_number', 'N/A')}
 """
         
-        messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": f"Here is the document context:\n{context}"}
+        # Build multi-turn contents list for Gemini
+        # Seed conversation with document context as the first exchange
+        contents = [
+            {"role": "user",  "parts": [f"Here is the document context:\n{context}"]},
+            {"role": "model", "parts": ["I have reviewed the document. How can I help you?"]},
         ]
         
-        # Add chat history
+        # Append previous chat history (last 3 exchanges = 6 messages)
         if chat_history:
-            messages.extend(chat_history[-6:])  # Last 3 exchanges
+            for msg in chat_history[-6:]:
+                role = "model" if msg.get("role") == "assistant" else "user"
+                contents.append({"role": role, "parts": [msg.get("content", "")]})
         
-        messages.append({"role": "user", "content": user_message})
+        # Append current user question
+        contents.append({"role": "user", "parts": [user_message]})
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=messages,
+            response = await self.model.generate_content_async(
+                contents,
                 stream=True,
-                max_tokens=500
+                generation_config=genai.GenerationConfig(max_output_tokens=500)
             )
-            
-            for chunk in response:
-                if chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
+            async for chunk in response:
+                if chunk.text:
+                    yield chunk.text
         except Exception as e:
             yield f"Error: {str(e)}"
     
@@ -75,8 +86,8 @@ Extracted Entities:
         user_message: str
     ) -> str:
         """Synchronous chat for non-streaming use cases."""
-        if not self.client:
-            return "Error: OpenAI API key not configured"
+        if not self.model:
+            return "Error: Google API key not configured"
         
         context = f"""Document Content:
 {document_text[:3000]}
@@ -86,14 +97,10 @@ Extracted Entities:
 """
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": f"Document:\n{context}\n\nQuestion: {user_message}"}
-                ],
-                max_tokens=500
+            response = self.model.generate_content(
+                f"Document:\n{context}\n\nQuestion: {user_message}",
+                generation_config=genai.GenerationConfig(max_output_tokens=500)
             )
-            return response.choices[0].message.content
+            return response.text
         except Exception as e:
             return f"Error: {str(e)}"

@@ -7,7 +7,6 @@ class Settings(BaseSettings):
     debug: bool = True
     database_url: str = "sqlite:///./freightiq.db"
     upload_dir: str = "./uploads"
-    openai_api_key: str = ""
     google_api_key: str = ""
     
     # Matching thresholds (tunable via env)
