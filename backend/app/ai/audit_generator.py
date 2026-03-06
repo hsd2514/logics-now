@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional
-from openai import OpenAI
+import google.generativeai as genai
 from app.config import get_settings
 
 settings = get_settings()
@@ -8,11 +8,19 @@ class AuditGenerator:
     """Novel Feature: AI-generated audit trail for compliance"""
     
     def __init__(self):
-        self.client = OpenAI(api_key=settings.openai_api_key) if settings.openai_api_key else None
-        self.system_prompt = """You are an audit documentation AI for logistics invoice reconciliation.
-Generate clear, professional audit explanations for document matching decisions.
-Include specific values and percentages. Be factual and compliance-focused.
-Keep explanations concise (2-3 sentences) but complete."""
+        if settings.google_api_key:
+            genai.configure(api_key=settings.google_api_key)
+            self.model = genai.GenerativeModel(
+                model_name="gemini-2.0-flash",
+                system_instruction=(
+                    "You are an audit documentation AI for logistics invoice reconciliation. "
+                    "Generate clear, professional audit explanations for document matching decisions. "
+                    "Include specific values and percentages. Be factual and compliance-focused. "
+                    "Keep explanations concise (2-3 sentences) but complete."
+                )
+            )
+        else:
+            self.model = None
     
     def generate_match_explanation(
         self, 
@@ -24,7 +32,7 @@ Keep explanations concise (2-3 sentences) but complete."""
         decision: str
     ) -> str:
         """Generate AI explanation for a triplet match decision."""
-        if not self.client:
+        if not self.model:
             return self._generate_fallback(
                 lr_entities, pod_entities, invoice_entities, 
                 match_score, validation_results, decision
@@ -48,15 +56,11 @@ Validation Results:
 Generate a professional audit explanation for this {decision} decision."""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": context}
-                ],
-                max_tokens=200
+            response = self.model.generate_content(
+                context,
+                generation_config=genai.GenerationConfig(max_output_tokens=200)
             )
-            return response.choices[0].message.content
+            return response.text
         except Exception as e:
             return self._generate_fallback(
                 lr_entities, pod_entities, invoice_entities,
@@ -70,7 +74,7 @@ Generate a professional audit explanation for this {decision} decision."""
         details: Dict
     ) -> str:
         """Generate AI explanation for a fraud alert."""
-        if not self.client:
+        if not self.model:
             return self._generate_fraud_fallback(alert_type, risk_score, details)
         
         context = f"""Fraud Alert:
@@ -81,16 +85,12 @@ Generate a professional audit explanation for this {decision} decision."""
 Generate a clear explanation of this fraud alert for the compliance team."""
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": context}
-                ],
-                max_tokens=150
+            response = self.model.generate_content(
+                context,
+                generation_config=genai.GenerationConfig(max_output_tokens=150)
             )
-            return response.choices[0].message.content
-        except:
+            return response.text
+        except Exception:
             return self._generate_fraud_fallback(alert_type, risk_score, details)
     
     def _format_validations(self, validations: List[Dict]) -> str:
