@@ -28,6 +28,8 @@ class MatchResult(BaseModel):
     attention_regions: List[AttentionRegion]
 
 class TripletResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
     id: str
     lr_id: str
     pod_id: str
@@ -38,6 +40,7 @@ class TripletResponse(BaseModel):
     ner_confidence: Optional[float] = None
     rule_pass_score: Optional[float] = None
     validation_details: Optional[Any] = None
+    partial_delivery: bool = False
     ai_explanation: Optional[str] = None
     attention_map: Optional[Any] = None
     status: str
@@ -49,9 +52,6 @@ class TripletResponse(BaseModel):
     lr: Optional[DocumentResponse] = None
     pod: Optional[DocumentResponse] = None
     invoice: Optional[DocumentResponse] = None
-    
-    class Config:
-        from_attributes = True
 
 class TripletListResponse(BaseModel):
     triplets: List[TripletResponse]

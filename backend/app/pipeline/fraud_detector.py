@@ -53,7 +53,8 @@ class FraudDetector:
         self, 
         triplet_data: Dict,
         vendor_profile: Optional[Dict] = None,
-        historical_triplets: List[Dict] = None
+        historical_triplets: List[Dict] = None,
+        contract_rate: Optional[Dict] = None,
     ) -> Tuple[float, List[FraudAlert]]:
         """
         Run fraud detection on a triplet.
@@ -79,6 +80,16 @@ class FraudDetector:
         if freq_alert:
             alerts.append(freq_alert)
             risk_scores.append(freq_alert.risk_score)
+
+        partial_alert = self._check_partial_delivery_overcharge(triplet_data)
+        if partial_alert:
+            alerts.append(partial_alert)
+            risk_scores.append(partial_alert.risk_score)
+
+        contract_alert = self._check_contract_rate_mismatch(triplet_data, contract_rate)
+        if contract_alert:
+            alerts.append(contract_alert)
+            risk_scores.append(contract_alert.risk_score)
         
         # Check 4: Predictive pattern deviation (Novel feature)
         if vendor_profile:
@@ -170,6 +181,88 @@ class FraudDetector:
                     pass
         
         return None
+
+    def _check_partial_delivery_overcharge(self, triplet: Dict) -> Optional[FraudAlert]:
+        lr = triplet.get("lr_entities", {}) or {}
+        pod = triplet.get("pod_entities", {}) or {}
+        inv = triplet.get("invoice_entities", {}) or {}
+
+        try:
+            lr_weight = float(lr.get("weight", 0) or 0)
+            pod_weight = float(pod.get("weight", 0) or 0)
+            lr_amount = float(lr.get("amount", 0) or 0)
+            inv_amount = float(inv.get("amount", 0) or 0)
+        except (TypeError, ValueError):
+            return None
+
+        if lr_weight <= 0 or pod_weight <= 0 or lr_amount <= 0 or inv_amount <= 0:
+            return None
+
+        ratio = pod_weight / lr_weight
+        if ratio >= settings.partial_delivery_min_ratio:
+            return None
+
+        variance = abs(inv_amount - lr_amount) / lr_amount
+        if variance > settings.partial_delivery_full_charge_tolerance:
+            return None
+
+        risk = min(0.95, settings.partial_overcharge_fraud_risk + (settings.partial_delivery_min_ratio - ratio))
+        return FraudAlert(
+            alert_type="PARTIAL_DELIVERY_OVERCHARGE",
+            risk_score=risk,
+            details={
+                "lr_weight": lr_weight,
+                "pod_weight": pod_weight,
+                "delivered_ratio": ratio,
+                "lr_amount": lr_amount,
+                "invoice_amount": inv_amount,
+                "amount_variance_percent": variance * 100,
+            },
+            reasoning=(
+                f"POD indicates partial delivery ({ratio * 100:.1f}% of LR weight), "
+                "but invoice still charges full LR amount."
+            ),
+        )
+
+    def _check_contract_rate_mismatch(self, triplet: Dict, contract_rate: Optional[Dict]) -> Optional[FraudAlert]:
+        if not contract_rate:
+            return None
+
+        inv = triplet.get("invoice_entities", {}) or {}
+        try:
+            expected_total = (
+                float(contract_rate.get("base_rate", 0) or 0)
+                + float(contract_rate.get("fuel_surcharge", 0) or 0)
+                + float(contract_rate.get("detention_rate", 0) or 0)
+                + float(contract_rate.get("distance_rate", 0) or 0)
+            )
+            inv_amount = float(inv.get("amount", 0) or 0)
+        except (TypeError, ValueError):
+            return None
+
+        if expected_total <= 0:
+            return None
+
+        variance = abs(inv_amount - expected_total) / expected_total
+        if variance <= settings.contract_mismatch_fraud_threshold:
+            return None
+
+        return FraudAlert(
+            alert_type="CONTRACT_RATE_MISMATCH",
+            risk_score=min(0.95, settings.contract_mismatch_fraud_risk_base + variance),
+            details={
+                "invoice_amount": inv_amount,
+                "contract_total": expected_total,
+                "variance_percent": variance * 100,
+                "vendor_name": contract_rate.get("vendor_name"),
+                "origin": contract_rate.get("origin"),
+                "destination": contract_rate.get("destination"),
+            },
+            reasoning=(
+                f"Invoice amount ({inv_amount:.2f}) deviates from contract total ({expected_total:.2f}) "
+                f"by {variance * 100:.1f}%."
+            ),
+        )
     
     def _check_amount_anomaly(self, triplet: Dict, vendor_profile: Optional[Dict]) -> Optional[FraudAlert]:
         """Check for unusual invoice amounts."""

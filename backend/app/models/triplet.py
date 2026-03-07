@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, DateTime, Text, JSON, ForeignKey
+from sqlalchemy import Column, String, Float, DateTime, Text, JSON, ForeignKey, Boolean
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
@@ -34,6 +34,7 @@ class Triplet(Base):
     
     # Validation details
     validation_details = Column(JSON, nullable=True)
+    partial_delivery = Column(Boolean, nullable=False, default=False)
     
     # Novel: AI-generated audit explanation
     ai_explanation = Column(Text, nullable=True)
