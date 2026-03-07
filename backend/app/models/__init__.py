@@ -3,5 +3,6 @@ from app.models.triplet import Triplet
 from app.models.fraud_alert import FraudAlert
 from app.models.vendor_profile import VendorProfile
 from app.models.audit_log import AuditLog
+from app.models.contract_rate import ContractRate
 
-__all__ = ["Document", "Triplet", "FraudAlert", "VendorProfile", "AuditLog"]
+__all__ = ["Document", "Triplet", "FraudAlert", "VendorProfile", "AuditLog", "ContractRate"]

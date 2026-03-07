@@ -101,7 +101,7 @@ def pod_html(d: dict) -> str:
 <p>To: {d['destination']}</p>
 <p>Vehicle: {d['vehicle']}</p>
 <p>Goods: {d['goods']}</p>
-<p>Weight: {d['weight']} KG</p>
+<p>Weight: {d.get('pod_weight', d['weight'])} KG</p>
 <p>Amount: Rs. {d['amount']}</p>
 <p>Delivery Status: Delivered Successfully</p>
 <p>Receiver Signature: Acknowledged</p>
@@ -162,6 +162,7 @@ async def _create_and_process(db: Session, file_id: str, file_path: str,
 @router.post("/generate")
 async def generate_demo(
     anomaly: bool = False,
+    partial: bool = False,
     db: Session = Depends(get_db),
 ):
     """
@@ -169,6 +170,7 @@ async def generate_demo(
 
     - anomaly=false  → amounts match  (healthy, high-confidence triplet)
     - anomaly=true   → invoice inflated by 20-40%  (fraud alert triggered)
+    - partial=true   → POD delivered weight lower than LR while invoice remains full
     """
     vendor, gst     = random.choice(VENDORS)
     consignee       = random.choice(CONSIGNEES)
@@ -178,6 +180,7 @@ async def generate_demo(
     amount          = random.randint(25_000, 180_000)
     invoice_amount  = amount if not anomaly else int(amount * random.uniform(1.20, 1.40))
     weight          = random.randint(500, 8_000)
+    pod_weight      = int(weight * random.uniform(0.60, 0.90)) if partial else weight
     date_str        = (datetime.now() - timedelta(days=random.randint(1, 10))).strftime("%d/%m/%Y")
     suffix          = str(random.randint(100_000, 999_999))
 
@@ -195,6 +198,7 @@ async def generate_demo(
         vehicle     = vehicle,
         amount      = amount,
         weight      = weight,
+        pod_weight  = pod_weight,
         date        = date_str,
     )
 
@@ -208,17 +212,24 @@ async def generate_demo(
     pod_doc = await _create_and_process(db, pod_id, pod_path, f"POD_{d['pod_no']}.html", "POD")
     inv_doc = await _create_and_process(db, inv_id, inv_path, f"INV_{d['inv_no']}.html", "INVOICE")
 
-    # Run matching
     triplets, events = matching_service.match_documents(db)
+    flat_triplets = []
+    for item in triplets:
+        if isinstance(item, list):
+            flat_triplets.extend(item)
+        else:
+            flat_triplets.append(item)
 
     return {
         "message": f"Demo documents created and {'anomalous ' if anomaly else ''}triplet matched.",
+        "scenario": {"anomaly": anomaly, "partial": partial},
         "shipment_id": d["shipment_id"],
         "documents": {
             "lr":      {"id": lr_doc.id,  "entities": lr_doc.entities},
             "pod":     {"id": pod_doc.id, "entities": pod_doc.entities},
             "invoice": {"id": inv_doc.id, "entities": inv_doc.entities},
         },
-        "triplets_created": len(triplets),
-        "triplet_ids": [t.id for t in triplets],
+        "triplets_created": len(flat_triplets),
+        "triplet_ids": [t.id for t in flat_triplets if hasattr(t, "id")],
+        "events_emitted": len(events),
     }
