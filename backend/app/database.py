@@ -48,13 +48,20 @@ def _migrate_sqlite_schema() -> None:
         table_exists = conn.execute(
             text("SELECT name FROM sqlite_master WHERE type='table' AND name='audit_logs'")
         ).first()
-        if not table_exists:
-            return
+        if table_exists:
+            rows = conn.execute(text("PRAGMA table_info(audit_logs)")).fetchall()
+            existing = {row[1] for row in rows}  # row[1] is column name
 
-        rows = conn.execute(text("PRAGMA table_info(audit_logs)")).fetchall()
-        existing = {row[1] for row in rows}  # row[1] is column name
+            for column, col_type in required_audit_columns.items():
+                if column in existing:
+                    continue
+                conn.execute(text(f"ALTER TABLE audit_logs ADD COLUMN {column} {col_type}"))
 
-        for column, col_type in required_audit_columns.items():
-            if column in existing:
-                continue
-            conn.execute(text(f"ALTER TABLE audit_logs ADD COLUMN {column} {col_type}"))
+        docs_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='documents'")
+        ).first()
+        if docs_exists:
+            doc_rows = conn.execute(text("PRAGMA table_info(documents)")).fetchall()
+            doc_existing = {row[1] for row in doc_rows}
+            if "processing_time_ms" not in doc_existing:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN processing_time_ms JSON"))

@@ -2,6 +2,7 @@ import os
 import re
 import uuid
 from typing import List, Optional, Tuple
+from time import perf_counter
 from sqlalchemy.orm import Session
 from fastapi import UploadFile
 from html.parser import HTMLParser
@@ -102,6 +103,41 @@ class DocumentService:
             db.commit()
         
         return document
+
+    async def create_and_process_from_bytes(
+        self,
+        db: Session,
+        filename: str,
+        content: bytes,
+        doc_type: str,
+    ) -> Document:
+        """Create a document from raw bytes and process it through the pipeline."""
+        file_id = str(uuid.uuid4())
+        file_ext = os.path.splitext(filename)[1]
+        saved_filename = f"{file_id}{file_ext}"
+        file_path = os.path.join(self.upload_dir, saved_filename)
+
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        document = Document(
+            id=file_id,
+            type=doc_type.upper(),
+            file_name=filename,
+            file_path=file_path,
+            status=DocumentStatus.PENDING,
+        )
+        db.add(document)
+        db.commit()
+
+        try:
+            document = await self.process_document(db, document)
+            db.commit()
+        except Exception as e:
+            document.status = DocumentStatus.ERROR
+            document.processing_error = str(e)
+            db.commit()
+        return document
     
     async def process_document(self, db: Session, document: Document) -> Document:
         """Process a document through preprocessing, OCR, and entity extraction."""
@@ -113,37 +149,47 @@ class DocumentService:
         
         document.status = DocumentStatus.PROCESSING
         db.commit()
+
+        t0 = perf_counter()
+        timings: dict[str, float] = {}
         
         await ws_manager.send_processing_update(
             document.id, 'PREPROCESSING', 10, 'Starting preprocessing'
         )
         
         # Stage 1: Preprocessing
+        t_stage = perf_counter()
         processed_image, quality_score = await asyncio.to_thread(
             self.preprocessor.process, document.file_path
         ) # Kept original return values
+        timings['preprocess'] = round((perf_counter() - t_stage) * 1000, 2)
         
         await ws_manager.send_processing_update(
             document.id, 'OCR', 30, 'Running OCR extraction'
         )
 
         # Stage 2: OCR
+        t_stage = perf_counter()
         ocr_text, text_blocks, ocr_confidence = await asyncio.to_thread(
             self.ocr_engine.extract, processed_image
         ) # Kept original return values
+        timings['ocr'] = round((perf_counter() - t_stage) * 1000, 2)
         
         await ws_manager.send_processing_update(
             document.id, 'NER', 70, 'Extracting entities'
         )
 
         # Stage 3: Entity Extraction
+        t_stage = perf_counter()
         entities, ner_confidence = await asyncio.to_thread(
             self.entity_extractor.extract_for_document_type,
             ocr_text, document.type
         )
+        timings['ner'] = round((perf_counter() - t_stage) * 1000, 2)
         
         # Update document
 
+        t_stage = perf_counter()
         document.ocr_text = ocr_text
         document.ocr_confidence = ocr_confidence
         document.text_blocks = await asyncio.to_thread(
@@ -153,18 +199,24 @@ class DocumentService:
         document.embedding = await asyncio.to_thread(
             self.embedding_service.embed_document, ocr_text, entities
         )
+        timings['embedding'] = round((perf_counter() - t_stage) * 1000, 2)
+        timings['total'] = round((perf_counter() - t0) * 1000, 2)
+        document.processing_time_ms = timings
         document.status = DocumentStatus.PROCESSED
         
         db.commit()
 
         await ws_manager.send_processing_update(
-            document.id, 'DONE', 100, 'Processing complete'
+            document.id, 'DONE', 100, f"Processing complete in {(timings.get('total', 0) / 1000):.2f}s"
         )
         
         return document
     
     async def process_html_document(self, db: Session, document: Document) -> Document:
         """Process HTML document - extract text directly without OCR."""
+        t0 = perf_counter()
+        timings: dict[str, float] = {}
+
         # Read HTML file
         with open(document.file_path, 'r', encoding='utf-8') as f:
             html_content = f.read()
@@ -179,19 +231,24 @@ class DocumentService:
             parser.feed(html)
             return parser.get_text()
 
+        t_stage = perf_counter()
         extracted_text = await asyncio.to_thread(extract_html, html_content)
+        timings['extract'] = round((perf_counter() - t_stage) * 1000, 2)
         
         await ws_manager.send_processing_update(
             document.id, 'NER', 70, 'Extracting entities'
         )
 
         # Stage 3: Entity Extraction
+        t_stage = perf_counter()
         entities, ner_confidence = await asyncio.to_thread(
             self.entity_extractor.extract_for_document_type,
             extracted_text, document.type
         )
+        timings['ner'] = round((perf_counter() - t_stage) * 1000, 2)
         
         # Update document - HTML is perfect quality
+        t_stage = perf_counter()
         document.ocr_text = extracted_text
         document.ocr_confidence = 1.0  # Perfect extraction from HTML
         document.text_blocks = []  # No spatial data for HTML
@@ -199,12 +256,15 @@ class DocumentService:
         document.embedding = await asyncio.to_thread(
             self.embedding_service.embed_document, extracted_text, entities
         )
+        timings['embedding'] = round((perf_counter() - t_stage) * 1000, 2)
+        timings['total'] = round((perf_counter() - t0) * 1000, 2)
+        document.processing_time_ms = timings
         document.status = DocumentStatus.PROCESSED
         
         db.commit()
 
         await ws_manager.send_processing_update(
-            document.id, 'DONE', 100, 'Processing complete'
+            document.id, 'DONE', 100, f"Processing complete in {(timings.get('total', 0) / 1000):.2f}s"
         )
         
         return document

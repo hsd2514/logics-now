@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import datetime
 
 from app.database import get_db
 from app.services.matching_service import MatchingService
 from app.schemas.triplet import TripletResponse, TripletListResponse, TripletReview
+from app.utils.export_utils import to_csv_bytes, text_to_pdf_bytes
 
 router = APIRouter()
 matching_service = MatchingService()
@@ -78,6 +81,99 @@ def list_triplets(
         pending_review=stats['pending_review'],
         auto_approved=stats['auto_approved'],
         flagged=stats['flagged']
+    )
+
+
+@router.get("/export")
+def export_triplets(
+    format: str = Query("csv", pattern="^(csv|pdf)$"),
+    db: Session = Depends(get_db),
+):
+    triplets, _ = matching_service.get_triplets(db, skip=0, limit=5000)
+    rows = []
+    for t in triplets:
+        rows.append(
+            {
+                "id": t.id,
+                "status": t.status,
+                "confidence": round(float(t.confidence or 0), 4),
+                "match_score": round(float(t.match_score or 0), 4),
+                "lr_id": t.lr_id,
+                "pod_id": t.pod_id,
+                "invoice_id": t.invoice_id,
+                "created_at": t.created_at.isoformat() if t.created_at else "",
+            }
+        )
+
+    if format == "csv":
+        content = to_csv_bytes(
+            rows,
+            fieldnames=["id", "status", "confidence", "match_score", "lr_id", "pod_id", "invoice_id", "created_at"],
+        )
+        return Response(
+            content=content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="triplets_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'},
+        )
+
+    lines = [f"{r['id']} | {r['status']} | conf={r['confidence']} | score={r['match_score']}" for r in rows]
+    pdf = text_to_pdf_bytes("FreightIQ Triplets Export", lines)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="triplets_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf"'},
+    )
+
+
+@router.get("/{triplet_id}/audit-export")
+def export_triplet_audit(
+    triplet_id: str,
+    format: str = Query("pdf", pattern="^(csv|pdf)$"),
+    db: Session = Depends(get_db),
+):
+    t = matching_service.get_triplet(db, triplet_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="Triplet not found")
+
+    details = t.validation_details or []
+    explanation = t.ai_explanation or "No AI explanation available."
+
+    row = {
+        "triplet_id": t.id,
+        "status": t.status,
+        "confidence": round(float(t.confidence or 0), 4),
+        "match_score": round(float(t.match_score or 0), 4),
+        "rule_pass_score": round(float(t.rule_pass_score or 0), 4),
+        "created_at": t.created_at.isoformat() if t.created_at else "",
+        "ai_explanation": explanation,
+    }
+
+    if format == "csv":
+        content = to_csv_bytes([row], fieldnames=list(row.keys()))
+        return Response(
+            content=content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="triplet_audit_{triplet_id[:8]}.csv"'},
+        )
+
+    lines = [
+        f"Triplet: {t.id}",
+        f"Status: {t.status}",
+        f"Confidence: {row['confidence']}",
+        f"Match score: {row['match_score']}",
+        f"Rule pass score: {row['rule_pass_score']}",
+        "Validation details:",
+    ]
+    for d in details[:20]:
+        lines.append(f"- {d.get('rule')}: {'PASS' if d.get('passed') else 'FAIL'} ({d.get('message', '')})")
+    lines.append("AI explanation:")
+    lines.extend((explanation or "").splitlines()[:20])
+
+    pdf = text_to_pdf_bytes("FreightIQ Triplet Audit Report", lines)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="triplet_audit_{triplet_id[:8]}.pdf"'},
     )
 
 

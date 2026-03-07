@@ -24,6 +24,15 @@ export const uploadBatch = async (files, docType) => {
   })
 }
 
+export const uploadBatchArchive = async (archiveFile, docType = null) => {
+  const formData = new FormData()
+  formData.append('archive', archiveFile)
+  const suffix = docType ? `?doc_type=${encodeURIComponent(docType)}` : ''
+  return api.post(`/documents/batch-upload${suffix}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
 export const getDocuments = (params) => api.get('/documents', { params })
 export const getDocument = (id) => api.get(`/documents/${id}`)
 export const deleteDocument = (id) => api.delete(`/documents/${id}`)
@@ -48,6 +57,9 @@ export const getTriplets = (params = {}) => {
 }
 export const runMatching = () => api.post('/triplets/match')
 export const getTriplet = (id) => api.get(`/triplets/${id}`)
+export const exportTriplets = (format = 'csv') => api.get(`/triplets/export?format=${format}`, { responseType: 'blob' })
+export const exportTripletAudit = (id, format = 'pdf') =>
+  api.get(`/triplets/${id}/audit-export?format=${format}`, { responseType: 'blob' })
 export const approveTriplet = (id, data) => api.post(`/triplets/${id}/approve`, data)
 export const rejectTriplet = (id, data) => api.post(`/triplets/${id}/reject`, data)
 
@@ -57,6 +69,7 @@ export const getFraudAlert = (id) => api.get(`/fraud/alerts/${id}`)
 export const dismissAlert = (id, data) => api.post(`/fraud/alerts/${id}/dismiss`, data)
 export const confirmAlert = (id, data) => api.post(`/fraud/alerts/${id}/confirm`, data)
 export const getPredictiveAlerts = () => api.get('/fraud/predictions')
+export const exportFraudAlerts = (format = 'csv') => api.get(`/fraud/export?format=${format}`, { responseType: 'blob' })
 
 // Demo
 export const generateDemo = (anomaly = false) => api.post('/demo/generate', null, { params: { anomaly } })

@@ -9,6 +9,17 @@ from app.models.fraud_alert import FraudAlert, AlertStatus
 
 router = APIRouter()
 
+
+def _extract_total_ms(doc: Document) -> float:
+    timing = doc.processing_time_ms or {}
+    if not isinstance(timing, dict):
+        return 0.0
+    value = timing.get("total")
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
 @router.get("")
 def get_stats(db: Session = Depends(get_db)):
     """Get dashboard statistics."""
@@ -50,6 +61,15 @@ def get_stats(db: Session = Depends(get_db)):
     auto_approved_count = triplets_by_status['AUTO_APPROVED']
     total_approved = auto_approved_count + triplets_by_status['APPROVED']
     automation_rate = (auto_approved_count / total_approved * 100) if total_approved > 0 else 0
+
+    processed_docs = db.query(Document).filter(Document.status.in_([DocumentStatus.PROCESSED, DocumentStatus.MATCHED])).all()
+    total_times = [_extract_total_ms(d) for d in processed_docs if _extract_total_ms(d) > 0]
+    avg_processing_time_ms = (sum(total_times) / len(total_times)) if total_times else 0.0
+
+    def _avg_for_type(doc_type: str) -> float:
+        docs = [d for d in processed_docs if d.type == doc_type]
+        vals = [_extract_total_ms(d) for d in docs if _extract_total_ms(d) > 0]
+        return round(sum(vals) / len(vals), 2) if vals else 0.0
     
     return {
         "documents": {
@@ -72,6 +92,12 @@ def get_stats(db: Session = Depends(get_db)):
         },
         "efficiency": {
             "manual_effort_reduction": round(automation_rate, 1),
-            "pending_review": triplets_by_status['REVIEW']
+            "pending_review": triplets_by_status['REVIEW'],
+            "avg_processing_time_ms": round(avg_processing_time_ms, 2),
+            "avg_processing_time_by_type_ms": {
+                "LR": _avg_for_type("LR"),
+                "POD": _avg_for_type("POD"),
+                "INVOICE": _avg_for_type("INVOICE"),
+            }
         }
     }
