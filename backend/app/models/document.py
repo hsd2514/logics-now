@@ -36,6 +36,9 @@ class Document(Base):
     
     # Embedding for matching
     embedding = Column(JSON, nullable=True)
+
+    # Processing performance metrics per stage (milliseconds)
+    processing_time_ms = Column(JSON, nullable=True)
     
     # Processing status
     status = Column(String, default=DocumentStatus.PENDING)

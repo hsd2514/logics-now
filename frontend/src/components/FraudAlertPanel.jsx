@@ -78,16 +78,36 @@ export function FraudAlertPanel() {
     return <Badge variant="outline">Low</Badge>
   }
 
+  const handleExport = async (format) => {
+    try {
+      const res = await api.exportFraudAlerts(format)
+      const blobUrl = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = `fraud_alerts.${format}`
+      a.click()
+      URL.revokeObjectURL(blobUrl)
+    } catch (err) {
+      console.error('Failed to export fraud alerts:', err)
+    }
+  }
+
   return (
     <Card className="h-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ShieldAlert className="h-5 w-5 text-red-500" />
-          Fraud Alerts
-          {alerts.length > 0 && (
-            <Badge variant="destructive" className="ml-auto">{alerts.length}</Badge>
-          )}
-        </CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-red-500" />
+            Fraud Alerts
+            {alerts.length > 0 && (
+              <Badge variant="destructive" className="ml-auto">{alerts.length}</Badge>
+            )}
+          </CardTitle>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>Export CSV</Button>
+            <Button variant="outline" size="sm" onClick={() => handleExport('pdf')}>Export PDF</Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[400px] pr-4">

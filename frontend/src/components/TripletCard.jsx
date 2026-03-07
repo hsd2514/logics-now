@@ -1,11 +1,14 @@
 import React from 'react'
-import { FileText, CheckCircle, XCircle, AlertTriangle, Eye, MessageSquare } from 'lucide-react'
+import { FileText, CheckCircle, XCircle, AlertTriangle, Eye, MessageSquare, Download } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
 
-export function TripletCard({ triplet, onApprove, onReject, onViewDetails, onChat }) {
+export function TripletCard({ triplet, onApprove, onReject, onViewDetails, onChat, onExportAudit }) {
+  const confidenceBand = triplet.confidence >= 0.9 ? 'border-l-4 border-l-green-500' :
+    triplet.confidence >= 0.7 ? 'border-l-4 border-l-amber-500' : 'border-l-4 border-l-red-500'
+
   const getStatusBadge = (status) => {
     const statusConfig = {
       AUTO_APPROVED: { variant: 'success', label: 'Auto Approved' },
@@ -27,7 +30,7 @@ export function TripletCard({ triplet, onApprove, onReject, onViewDetails, onCha
   const confidencePercent = Math.round(triplet.confidence * 100)
 
   return (
-    <Card className="overflow-hidden">
+    <Card className={`overflow-hidden ${confidenceBand}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-medium">
@@ -106,6 +109,10 @@ export function TripletCard({ triplet, onApprove, onReject, onViewDetails, onCha
         <Button variant="outline" size="sm" onClick={() => onChat?.(triplet)}>
           <MessageSquare className="h-4 w-4 mr-1" />
           Chat
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => onExportAudit?.(triplet)}>
+          <Download className="h-4 w-4 mr-1" />
+          Audit
         </Button>
         {triplet.status === 'REVIEW' && (
           <>

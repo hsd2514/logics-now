@@ -5,6 +5,12 @@ const TabsContext = React.createContext()
 
 const Tabs = React.forwardRef(({ className, defaultValue, value, onValueChange, ...props }, ref) => {
   const [selectedValue, setSelectedValue] = React.useState(value || defaultValue)
+
+  React.useEffect(() => {
+    if (value !== undefined) {
+      setSelectedValue(value)
+    }
+  }, [value])
   
   const handleValueChange = (newValue) => {
     setSelectedValue(newValue)
