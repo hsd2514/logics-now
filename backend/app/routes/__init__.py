@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.routes import documents, triplets, fraud, ai, stats, demo, vendors, contract_rates
+from app.routes import documents, triplets, fraud, ai, stats, demo, vendors, contract_rates, disputes
 
 api_router = APIRouter()
 

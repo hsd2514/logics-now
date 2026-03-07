@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from datetime import datetime, timedelta
@@ -12,6 +12,110 @@ from app.models.triplet import Triplet
 
 class VendorService:
     """Service for managing vendor profiles and analytics."""
+
+    def _normalize_route_patterns(self, raw_patterns: Any) -> List[Dict[str, Any]]:
+        """Normalize stored route patterns into [{route, count}] shape."""
+        if not raw_patterns:
+            return []
+
+        normalized: List[Dict[str, Any]] = []
+        if isinstance(raw_patterns, list):
+            for item in raw_patterns:
+                if isinstance(item, dict):
+                    route = str(item.get("route", "")).strip().lower()
+                    if not route:
+                        continue
+                    try:
+                        count = int(item.get("count", 1))
+                    except (TypeError, ValueError):
+                        count = 1
+                    normalized.append({"route": route, "count": max(1, count)})
+                elif isinstance(item, str):
+                    route = item.strip().lower()
+                    if route:
+                        normalized.append({"route": route, "count": 1})
+        elif isinstance(raw_patterns, dict):
+            for route, count in raw_patterns.items():
+                route_key = str(route).strip().lower()
+                if not route_key:
+                    continue
+                try:
+                    parsed_count = int(count)
+                except (TypeError, ValueError):
+                    parsed_count = 1
+                normalized.append({"route": route_key, "count": max(1, parsed_count)})
+
+        merged: Dict[str, int] = {}
+        for item in normalized:
+            merged[item["route"]] = merged.get(item["route"], 0) + int(item["count"])
+
+        return [
+            {"route": route, "count": count}
+            for route, count in sorted(merged.items(), key=lambda x: x[1], reverse=True)
+        ][:20]
+
+    def _compute_display_risk(self, profile: VendorProfile) -> float:
+        """
+        Compute a robust 0-100 risk score for UI sorting/display.
+        Uses persisted risk if present; otherwise derives from profile signals.
+        """
+        persisted = float(profile.risk_score or 0.0)
+        if persisted > 0:
+            return round(min(persisted, 100.0), 2)
+
+        total_invoices = float(profile.total_invoices or 0.0)
+        avg_amount = float(profile.avg_amount or 0.0)
+        std_dev = float(profile.std_deviation or 0.0)
+        avg_freq = float(profile.avg_frequency or 0.0)
+        fraud_rate = float(profile.historical_fraud_rate or 0.0)
+        routes = self._normalize_route_patterns(profile.route_patterns)
+
+        risk = 0.0
+
+        # Fraud history is the strongest feature.
+        risk += min(fraud_rate * 100.0 * 0.6, 60.0)
+
+        # New vendors are less predictable.
+        if total_invoices <= 2:
+            risk += 30.0
+        elif total_invoices < 5:
+            risk += 18.0
+
+        # Low frequency tends to be noisier in this dataset.
+        if total_invoices > 0 and avg_freq < 1.0:
+            risk += 12.0
+
+        # Amount volatility
+        if avg_amount > 0 and std_dev > 0:
+            cv = std_dev / avg_amount
+            risk += min(cv * 35.0, 28.0)
+
+        # Single-route concentration is a mild risk factor.
+        if len(routes) <= 1 and total_invoices > 0:
+            risk += 6.0
+
+        # Ensure non-flat baseline for active vendors.
+        if total_invoices > 0 and risk < 5.0:
+            risk = 5.0
+
+        return round(min(risk, 100.0), 2)
+
+    def _serialize_profile(self, profile: VendorProfile) -> Dict[str, Any]:
+        normalized_routes = self._normalize_route_patterns(profile.route_patterns)
+        return {
+            'vendor_name': profile.vendor_name,
+            'risk_score': self._compute_display_risk(profile),
+            'total_invoices': profile.total_invoices,
+            'avg_amount': profile.avg_amount,
+            'std_deviation': profile.std_deviation,
+            'min_amount': profile.min_amount,
+            'max_amount': profile.max_amount,
+            'avg_frequency': profile.avg_frequency,
+            'historical_fraud_rate': profile.historical_fraud_rate,
+            'route_patterns': normalized_routes,
+            'first_seen': profile.first_seen.isoformat() if profile.first_seen else None,
+            'last_invoice_date': profile.last_invoice_date.isoformat() if profile.last_invoice_date else None
+        }
     
     def get_or_create_profile(self, db: Session, vendor_name: str) -> VendorProfile:
         """Get existing vendor profile or create new one."""
@@ -133,28 +237,27 @@ class VendorService:
         skip: int = 0, 
         limit: int = 100,
         sort_by: str = 'risk_score'
-    ) -> tuple[List[VendorProfile], int]:
+    ) -> tuple[List[Dict[str, Any]], int]:
         """Get all vendor profiles with pagination."""
-        query = db.query(VendorProfile)
-        
-        # Apply sorting
+        profiles = db.query(VendorProfile).all()
+        serialized = [self._serialize_profile(p) for p in profiles]
+
         if sort_by == 'risk_score':
-            query = query.order_by(desc(VendorProfile.risk_score))
+            serialized.sort(key=lambda p: float(p.get('risk_score', 0.0)), reverse=True)
         elif sort_by == 'total_invoices':
-            query = query.order_by(desc(VendorProfile.total_invoices))
+            serialized.sort(key=lambda p: float(p.get('total_invoices', 0.0)), reverse=True)
         elif sort_by == 'avg_amount':
-            query = query.order_by(desc(VendorProfile.avg_amount))
+            serialized.sort(key=lambda p: float(p.get('avg_amount', 0.0)), reverse=True)
         else:
-            query = query.order_by(VendorProfile.vendor_name)
-        
-        total = query.count()
-        profiles = query.offset(skip).limit(limit).all()
-        
-        return profiles, total
+            serialized.sort(key=lambda p: (p.get('vendor_name') or '').lower())
+
+        total = len(serialized)
+        page = serialized[skip: skip + limit]
+        return page, total
     
     def get_vendor_analytics(self, db: Session) -> Dict:
         """Get aggregate vendor analytics."""
-        profiles = db.query(VendorProfile).all()
+        profiles = [self._serialize_profile(p) for p in db.query(VendorProfile).all()]
         
         if not profiles:
             return {
@@ -167,21 +270,22 @@ class VendorService:
             }
         
         total_vendors = len(profiles)
-        high_risk_count = sum(1 for p in profiles if p.risk_score > 70)
-        avg_risk = statistics.mean([p.risk_score for p in profiles])
-        total_transactions = sum(p.total_invoices for p in profiles)
+        high_risk_count = sum(1 for p in profiles if float(p.get('risk_score', 0.0)) > 70)
+        avg_risk = statistics.mean([float(p.get('risk_score', 0.0)) for p in profiles])
+        total_transactions = sum(float(p.get('total_invoices', 0.0)) for p in profiles)
         
-        all_amounts = [p.avg_amount for p in profiles if p.avg_amount > 0]
+        all_amounts = [float(p.get('avg_amount', 0.0)) for p in profiles if float(p.get('avg_amount', 0.0)) > 0]
         avg_transaction_value = statistics.mean(all_amounts) if all_amounts else 0.0
         
         # Risk distribution
         risk_buckets = {'low': 0, 'medium': 0, 'high': 0, 'critical': 0}
         for p in profiles:
-            if p.risk_score < 25:
+            risk = float(p.get('risk_score', 0.0))
+            if risk < 25:
                 risk_buckets['low'] += 1
-            elif p.risk_score < 50:
+            elif risk < 50:
                 risk_buckets['medium'] += 1
-            elif p.risk_score < 75:
+            elif risk < 75:
                 risk_buckets['high'] += 1
             else:
                 risk_buckets['critical'] += 1
@@ -239,20 +343,7 @@ class VendorService:
         vendor_fraud_alerts = []
         
         return {
-            'profile': {
-                'vendor_name': profile.vendor_name,
-                'risk_score': profile.risk_score,
-                'total_invoices': profile.total_invoices,
-                'avg_amount': profile.avg_amount,
-                'std_deviation': profile.std_deviation,
-                'min_amount': profile.min_amount,
-                'max_amount': profile.max_amount,
-                'avg_frequency': profile.avg_frequency,
-                'historical_fraud_rate': profile.historical_fraud_rate,
-                'route_patterns': profile.route_patterns,
-                'first_seen': profile.first_seen.isoformat() if profile.first_seen else None,
-                'last_invoice_date': profile.last_invoice_date.isoformat() if profile.last_invoice_date else None
-            },
+            'profile': self._serialize_profile(profile),
             'recent_transactions': recent_transactions,
             'fraud_alerts': [
                 {

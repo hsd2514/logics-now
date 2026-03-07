@@ -27,23 +27,7 @@ def list_vendor_profiles(
     profiles, total = vendor_service.get_all_profiles(db, skip, limit, sort_by)
     
     return {
-        'profiles': [
-            {
-                'vendor_name': p.vendor_name,
-                'risk_score': p.risk_score,
-                'total_invoices': p.total_invoices,
-                'avg_amount': p.avg_amount,
-                'std_deviation': p.std_deviation,
-                'min_amount': p.min_amount,
-                'max_amount': p.max_amount,
-                'avg_frequency': p.avg_frequency,
-                'historical_fraud_rate': p.historical_fraud_rate,
-                'route_patterns': p.route_patterns,
-                'first_seen': p.first_seen.isoformat() if p.first_seen else None,
-                'last_invoice_date': p.last_invoice_date.isoformat() if p.last_invoice_date else None
-            }
-            for p in profiles
-        ],
+        'profiles': profiles,
         'total': total,
         'skip': skip,
         'limit': limit
