@@ -85,10 +85,10 @@ def dismiss_alert(
         action="FRAUD_DISMISSED",
         ai_generated=(
             f"Fraud alert of type '{alert.alert_type}' (risk {alert.risk_score * 100:.0f}%) "
-            f"was dismissed by reviewer. Notes: {notes or 'None'}."
+            f"was dismissed by reviewer. Notes: {action.notes or 'None'}."
         ),
         context={"alert_id": alert_id, "alert_type": alert.alert_type, "risk_score": alert.risk_score},
-        user_id=user_id,
+        user_id=current_user,
     )
     db.add(audit)
     db.commit()
@@ -121,10 +121,10 @@ def confirm_alert(
         action="FRAUD_CONFIRMED",
         ai_generated=(
             f"Fraud alert of type '{alert.alert_type}' (risk {alert.risk_score * 100:.0f}%) "
-            f"was confirmed as fraud by reviewer. Notes: {notes or 'None'}."
+            f"was confirmed as fraud by reviewer. Notes: {action.notes or 'None'}."
         ),
         context={"alert_id": alert_id, "alert_type": alert.alert_type, "risk_score": alert.risk_score},
-        user_id=user_id,
+        user_id=current_user,
     )
     db.add(audit)
     db.commit()

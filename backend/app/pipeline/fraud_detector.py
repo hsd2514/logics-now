@@ -3,6 +3,8 @@ import os
 import numpy as np
 import joblib
 from sklearn.ensemble import IsolationForest
+from sklearn.neural_network import MLPRegressor
+from sklearn.preprocessing import StandardScaler
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
@@ -20,9 +22,14 @@ class FraudDetector:
     """Stage 6: Dual anomaly detection - Isolation Forest + Pattern Analysis"""
     
     MODEL_PATH = "isolation_forest.joblib"
+    AUTOENCODER_PATH = "autoencoder.joblib"
     
     def __init__(self):
         self.isolation_forest = None
+        self.autoencoder = None
+        self.autoencoder_scaler = None
+        self.autoencoder_err_mean = 0.0
+        self.autoencoder_err_std = 1.0
         self.feature_names = ['amount', 'frequency_deviation', 'amount_deviation', 'route_anomaly']
         
         # Attempt to load saved model to persist training across server restarts
@@ -31,6 +38,15 @@ class FraudDetector:
                 self.isolation_forest = joblib.load(self.MODEL_PATH)
             except Exception:
                 # Log error if loading fails but continue without a pre-trained model
+                pass
+        if os.path.exists(self.AUTOENCODER_PATH):
+            try:
+                payload = joblib.load(self.AUTOENCODER_PATH)
+                self.autoencoder = payload.get('model')
+                self.autoencoder_scaler = payload.get('scaler')
+                self.autoencoder_err_mean = float(payload.get('err_mean', 0.0))
+                self.autoencoder_err_std = float(payload.get('err_std', 1.0))
+            except Exception:
                 pass
     
     def detect(
@@ -89,6 +105,22 @@ class FraudDetector:
                 )
                 alerts.append(ml_alert)
                 risk_scores.append(ml_alert.risk_score)
+
+        # Check 6: Autoencoder reconstruction anomaly
+        if self.autoencoder is None and historical_triplets:
+            if len(historical_triplets) >= settings.autoencoder_min_samples:
+                self.train_autoencoder(historical_triplets)
+        if self.autoencoder and self.autoencoder_scaler:
+            ae_risk = self.score_with_autoencoder(triplet_data)
+            if ae_risk > settings.autoencoder_alert_threshold:
+                ae_alert = FraudAlert(
+                    alert_type="AUTOENCODER_ANOMALY",
+                    risk_score=ae_risk,
+                    details={'model': 'MLPAutoencoderProxy', 'risk_score_raw': ae_risk},
+                    reasoning=f"Autoencoder reconstruction error indicates anomalous behavior (risk {ae_risk:.2f})."
+                )
+                alerts.append(ae_alert)
+                risk_scores.append(ae_alert.risk_score)
         
         # Calculate overall risk
         overall_risk = max(risk_scores) if risk_scores else 0.0
@@ -315,6 +347,54 @@ class FraudDetector:
             pass
         
         return True
+
+    def train_autoencoder(self, historical_data: List[Dict]) -> bool:
+        """Train a compact autoencoder proxy using MLP reconstruction."""
+        if len(historical_data) < settings.autoencoder_min_samples:
+            return False
+
+        features = []
+        for triplet in historical_data:
+            inv = triplet.get('invoice_entities', {})
+            features.append([
+                float(inv.get('amount', 0) or 0),
+                float(triplet.get('frequency_score', 0) or 0),
+                float(triplet.get('amount_deviation', 0) or 0),
+                float(triplet.get('route_score', 0) or 0),
+            ])
+        X = np.array(features, dtype=np.float32)
+
+        scaler = StandardScaler()
+        Xs = scaler.fit_transform(X)
+        model = MLPRegressor(
+            hidden_layer_sizes=(3,),
+            activation='tanh',
+            random_state=settings.isolation_forest_random_state,
+            max_iter=settings.autoencoder_max_iter,
+        )
+        model.fit(Xs, Xs)
+
+        reconstructed = model.predict(Xs)
+        errors = np.mean((Xs - reconstructed) ** 2, axis=1)
+
+        self.autoencoder = model
+        self.autoencoder_scaler = scaler
+        self.autoencoder_err_mean = float(np.mean(errors))
+        self.autoencoder_err_std = float(np.std(errors) + 1e-6)
+
+        try:
+            joblib.dump(
+                {
+                    'model': self.autoencoder,
+                    'scaler': self.autoencoder_scaler,
+                    'err_mean': self.autoencoder_err_mean,
+                    'err_std': self.autoencoder_err_std,
+                },
+                self.AUTOENCODER_PATH,
+            )
+        except Exception:
+            pass
+        return True
     
     def score_with_isolation_forest(self, triplet: Dict) -> float:
         """Score a triplet using trained Isolation Forest."""
@@ -334,6 +414,25 @@ class FraudDetector:
         # Convert to 0-1 risk score (lower decision function = higher risk)
         risk = max(0, min(1, 0.5 - score * 0.5))
         return risk
+
+    def score_with_autoencoder(self, triplet: Dict) -> float:
+        """Score anomaly risk based on reconstruction error z-score."""
+        if self.autoencoder is None or self.autoencoder_scaler is None:
+            return 0.0
+        inv = triplet.get('invoice_entities', {})
+        x = np.array([[
+            float(inv.get('amount', 0) or 0),
+            float(triplet.get('frequency_score', 0) or 0),
+            float(triplet.get('amount_deviation', 0) or 0),
+            float(triplet.get('route_score', 0) or 0),
+        ]], dtype=np.float32)
+        xs = self.autoencoder_scaler.transform(x)
+        reconstructed = self.autoencoder.predict(xs)
+        err = float(np.mean((xs - reconstructed) ** 2))
+        z = (err - self.autoencoder_err_mean) / self.autoencoder_err_std
+        # Smooth z-score into [0, 1]
+        risk = 1.0 / (1.0 + np.exp(-z))
+        return float(max(0.0, min(1.0, risk)))
     
     def alerts_to_dict(self, alerts: List[FraudAlert]) -> List[Dict]:
         """Convert alerts to dictionary for JSON storage."""

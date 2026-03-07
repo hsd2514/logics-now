@@ -153,13 +153,99 @@ class EntityExtractor:
         
         # Add document-type specific extraction
         if doc_type == 'LR':
-            # LR specific: look for booking date, expected delivery
-            pass
+            entities.update(self._extract_lr_specific(text))
         elif doc_type == 'POD':
-            # POD specific: look for delivery date, receiver signature
-            pass
+            entities.update(self._extract_pod_specific(text))
         elif doc_type == 'INVOICE':
-            # Invoice specific: look for GST, tax breakdown
-            pass
+            entities.update(self._extract_invoice_specific(text))
         
         return entities, confidence
+
+    def _extract_lr_specific(self, text: str) -> Dict:
+        lr_entities = {}
+        patterns = {
+            'gr_number': [
+                r'\b(?:GR|G\.?R\.?)\s*(?:No|Number|#)?[\s:.-]*([A-Z0-9-]{5,20})',
+            ],
+            'consignor': [
+                r'\b(?:Consignor|Shipper|Booked\s*By)\b[\s:.-]*([A-Za-z0-9\s&.,-]{3,60})',
+            ],
+            'consignee': [
+                r'\b(?:Consignee|Deliver\s*To)\b[\s:.-]*([A-Za-z0-9\s&.,-]{3,60})',
+            ],
+            'truck_number': [
+                r'\b([A-Z]{2}\s?\d{1,2}\s?[A-Z]{1,3}\s?\d{4})\b',
+            ],
+            'booking_date': [
+                r'\b(?:Booking\s*Date|Date\s*of\s*Booking)\b[\s:.-]*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})',
+            ],
+        }
+        for key, pats in patterns.items():
+            result = self._extract_entity(text, pats)
+            if result:
+                value = result.value.strip()
+                if key.endswith('date'):
+                    value = self._parse_date(value)
+                lr_entities[key] = value
+        return lr_entities
+
+    def _extract_pod_specific(self, text: str) -> Dict:
+        pod_entities = {}
+        patterns = {
+            'delivery_date': [
+                r'\b(?:Delivery\s*Date|Delivered\s*On)\b[\s:.-]*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})',
+            ],
+            'delivery_time': [
+                r'\b(?:Delivery\s*Time|Time)\b[\s:.-]*([0-2]?\d[:.][0-5]\d(?:\s?[APap][Mm])?)',
+            ],
+            'receiver_name': [
+                r'\b(?:Received\s*By|Receiver|Delivered\s*to)\b[\s:.-]*([A-Za-z\s.]{3,50})',
+            ],
+            'delivery_status': [
+                r'\b(Delivered|Partially\s*Delivered|Undelivered|Damaged|Received\s*in\s*Good\s*Condition)\b',
+            ],
+            'condition_notes': [
+                r'\b(?:Condition|Remarks|Notes)\b[\s:.-]*([A-Za-z0-9\s,.-]{3,120})',
+            ],
+        }
+        for key, pats in patterns.items():
+            result = self._extract_entity(text, pats)
+            if result:
+                value = result.value.strip()
+                if key.endswith('date'):
+                    value = self._parse_date(value)
+                pod_entities[key] = value
+        return pod_entities
+
+    def _extract_invoice_specific(self, text: str) -> Dict:
+        invoice_entities = {}
+        patterns = {
+            'invoice_number': [
+                r'\b(?:Invoice)\s*(?:No|Number|#)?[\s:.-]*([A-Z0-9/-]{5,30})',
+            ],
+            'gstin': [
+                r'\b(\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d])\b',
+            ],
+            'tax_amount': [
+                r'\b(?:Tax|GST|CGST|SGST|IGST)\b[\s:₹Rs,.]*([0-9,]+\.[0-9]+|[0-9,]+)',
+            ],
+            'hsn_code': [
+                r'\b(?:HSN|HSN\s*Code)\b[\s:.-]*([0-9]{4,8})',
+            ],
+            'line_item_count': [
+                r'\b(?:Items|Line\s*Items)\b[\s:.-]*([0-9]{1,3})',
+            ],
+        }
+        for key, pats in patterns.items():
+            result = self._extract_entity(text, pats)
+            if result:
+                value = result.value.strip()
+                if key in ('tax_amount',):
+                    value = self._parse_amount(value)
+                elif key in ('line_item_count',):
+                    try:
+                        value = int(value)
+                    except Exception:
+                        continue
+                invoice_entities[key] = value
+        return invoice_entities
