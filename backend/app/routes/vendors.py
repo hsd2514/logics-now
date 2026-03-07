@@ -53,12 +53,22 @@ def list_vendor_profiles(
 @router.get("/{vendor_name}")
 def get_vendor_details(vendor_name: str, db: Session = Depends(get_db)):
     """Get detailed information about a specific vendor."""
-    details = vendor_service.get_vendor_details(db, vendor_name)
-    
-    if not details:
-        raise HTTPException(status_code=404, detail="Vendor not found")
-    
-    return details
+    try:
+        print(f"Getting details for vendor: {vendor_name}")
+        details = vendor_service.get_vendor_details(db, vendor_name)
+        print(f"Got details: {details is not None}")
+        
+        if not details:
+            raise HTTPException(status_code=404, detail="Vendor not found")
+        
+        return details
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in get_vendor_details: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error loading vendor details: {str(e)}")
 
 
 @router.post("/refresh")
@@ -71,8 +81,8 @@ def refresh_all_profiles(db: Session = Depends(get_db)):
     
     updated_count = 0
     for invoice in invoices:
-        if invoice.entities and invoice.entities.get('party_name'):
-            vendor_name = invoice.entities.get('party_name')
+        if invoice.entities and invoice.entities.get('vendor_name'):
+            vendor_name = invoice.entities.get('vendor_name')
             amount = invoice.entities.get('amount', 0)
             route = f"{invoice.entities.get('origin', '')}-{invoice.entities.get('destination', '')}"
             
@@ -89,4 +99,5 @@ def refresh_all_profiles(db: Session = Depends(get_db)):
             )
             updated_count += 1
     
+    db.commit()
     return {"message": f"Refreshed {updated_count} vendor profiles"}

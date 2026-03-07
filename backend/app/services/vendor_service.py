@@ -44,7 +44,7 @@ class VendorService:
         
         vendor_invoices = [
             inv for inv in invoices 
-            if inv.entities and inv.entities.get('party_name', '').strip().upper() == vendor_name.strip().upper()
+            if inv.entities and inv.entities.get('vendor_name', '').strip().upper() == vendor_name.strip().upper()
         ]
         
         if not vendor_invoices:
@@ -95,7 +95,7 @@ class VendorService:
         ).join(
             Document, Triplet.invoice_id == Document.id
         ).filter(
-            func.upper(func.json_extract(Document.entities, '$.party_name')) == vendor_name.strip().upper()
+            func.upper(func.json_extract(Document.entities, '$.vendor_name')) == vendor_name.strip().upper()
         ).count()
         
         if profile.total_invoices > 0:
@@ -211,18 +211,29 @@ class VendorService:
         
         vendor_invoices = [
             inv for inv in invoices 
-            if inv.entities and inv.entities.get('party_name', '').strip().upper() == vendor_name.strip().upper()
+            if inv.entities and inv.entities.get('vendor_name', '').strip().upper() == vendor_name.strip().upper()
         ]
         
         recent_transactions = []
-        for inv in sorted(vendor_invoices, key=lambda x: x.upload_date or datetime.now(), reverse=True)[:10]:
-            recent_transactions.append({
-                'id': inv.id,
-                'amount': inv.entities.get('amount'),
-                'date': inv.entities.get('date'),
-                'shipment_id': inv.entities.get('shipment_id'),
-                'upload_date': inv.upload_date.isoformat() if inv.upload_date else None
-            })
+        try:
+            # Sort by uploaded_at, handling None values
+            sorted_invoices = sorted(
+                vendor_invoices, 
+                key=lambda x: x.uploaded_at if x.uploaded_at else datetime.min,
+                reverse=True
+            )[:10]
+            
+            for inv in sorted_invoices:
+                recent_transactions.append({
+                    'id': inv.id,
+                    'amount': inv.entities.get('amount') if inv.entities else None,
+                    'date': inv.entities.get('date') if inv.entities else None,
+                    'shipment_id': inv.entities.get('shipment_id') if inv.entities else None,
+                    'uploaded_at': inv.uploaded_at.isoformat() if inv.uploaded_at else None
+                })
+        except Exception as e:
+            print(f"Error processing transactions: {e}")
+            recent_transactions = []
         
         # Get fraud alerts - simplified for now
         vendor_fraud_alerts = []
