@@ -9,21 +9,22 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "ai": "^3",
+    "axios": "^1",
+    "class-variance-authority": "^0.7",
+    "clsx": "^2",
+    "lucide-react": "^0.400",
     "react": "^18",
     "react-dom": "^18",
-    "ai": "^3",
-    "lucide-react": "^0.400",
-    "clsx": "^2",
-    "tailwind-merge": "^2",
-    "class-variance-authority": "^0.7",
     "react-dropzone": "^14",
-    "axios": "^1"
+    "recharts": "^3.8.0",
+    "tailwind-merge": "^2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4",
-    "vite": "^5",
-    "tailwindcss": "^3",
+    "autoprefixer": "^10",
     "postcss": "^8",
-    "autoprefixer": "^10"
+    "tailwindcss": "^3",
+    "vite": "^5"
   }
 }

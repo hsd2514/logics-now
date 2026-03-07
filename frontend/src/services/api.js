@@ -46,7 +46,6 @@ export const getTriplets = (params = {}) => {
   if (params.limit != null) query.limit = params.limit
   return api.get('/triplets', { params: query })
 }
-
 export const runMatching = () => api.post('/triplets/match')
 export const getTriplet = (id) => api.get(`/triplets/${id}`)
 export const approveTriplet = (id, data) => api.post(`/triplets/${id}/approve`, data)
@@ -58,6 +57,9 @@ export const getFraudAlert = (id) => api.get(`/fraud/alerts/${id}`)
 export const dismissAlert = (id, data) => api.post(`/fraud/alerts/${id}/dismiss`, data)
 export const confirmAlert = (id, data) => api.post(`/fraud/alerts/${id}/confirm`, data)
 export const getPredictiveAlerts = () => api.get('/fraud/predictions')
+
+// Demo
+export const generateDemo = (anomaly = false) => api.post('/demo/generate', null, { params: { anomaly } })
 
 // AI
 export const chatWithDocument = async (documentId, message, onChunk) => {

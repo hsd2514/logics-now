@@ -17,9 +17,9 @@ class EntityExtractor:
         self.patterns = {
             'shipment_id': [
                 # Allow intermediate words like 'Number', 'No', 'Ref', 'ID' between label and value
-                r'\b(?:LR|POD|INV|INVOICE|SHIPMENT)\b(?:\s+(?:No|Number|Ref|ID|#))?[\s:.-]*([A-Z0-9]*\d[A-Z0-9]{4,14})',
-                r'\b(?:Consignment|CN|Docket)\b(?:\s+(?:No|Number|Ref|ID|#))?[\s:.-]*([A-Z0-9]*\d[A-Z0-9]{4,14})',
-                r'\b(?:AWB|Airway\s*Bill)\b(?:\s+(?:No|Number|Ref|ID|#))?[\s:.-]*([A-Z0-9]*\d[A-Z0-9]{6,14})',
+                r'\b(?:LR|POD|INV|INVOICE|SHIPMENT)\b(?:\s+(?:No|Number|Ref|ID|#))?[\s:#.-]*([A-Z0-9]*\d[A-Z0-9]{4,14})',
+                r'\b(?:Consignment|CN|Docket)\b(?:\s+(?:No|Number|Ref|ID|#))?[\s:#.-]*([A-Z0-9]*\d[A-Z0-9]{4,14})',
+                r'\b(?:AWB|Airway\s*Bill)\b(?:\s+(?:No|Number|Ref|ID|#))?[\s:#.-]*([A-Z0-9]*\d[A-Z0-9]{6,14})',
             ],
             'amount': [
                 # Word boundaries and prioritized labels

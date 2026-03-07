@@ -93,15 +93,17 @@ class TripletMatcher:
         }
         # Backward-compatible key expected by older tests.
         field_matches['_embedding_similarity'] = field_matches['embedding_similarity']
-        weighted_score += self.embedding_weight * contrastive_score
-        total_weight += self.embedding_weight
+        if lr_embedding or pod_embedding or invoice_embedding:
+            weighted_score += self.embedding_weight * contrastive_score
+            total_weight += self.embedding_weight
         
         match_score = weighted_score / total_weight if total_weight > 0 else 0
         # Blend GAT-style graph score with field/contrastive score
-        match_score = (
-            (1.0 - settings.graph_attention_weight) * match_score
-            + settings.graph_attention_weight * graph_score
-        )
+        if graph_score > 0:
+            match_score = (
+                (1.0 - settings.graph_attention_weight) * match_score
+                + settings.graph_attention_weight * graph_score
+            )
         field_matches['graph_attention'] = {
             'score': graph_score,
             'matched': graph_score > 0.55,
@@ -166,14 +168,18 @@ class TripletMatcher:
         if all(v == normalized[0] for v in normalized):
             return 1.0
         
-        # Partial match
-        max_similarity = 0
+        # Partial match across all available document pairs.
+        total_similarity = 0.0
+        pair_count = 0
         for i in range(len(normalized)):
             for j in range(i + 1, len(normalized)):
                 sim = SequenceMatcher(None, normalized[i], normalized[j]).ratio()
-                max_similarity = max(max_similarity, sim)
-        
-        return max_similarity
+                total_similarity += sim
+                pair_count += 1
+
+        if pair_count == 0:
+            return 0.0
+        return total_similarity / pair_count
     
     def _numeric_match_score(self, values: List, tolerance: float) -> float:
         """Score for numeric match with tolerance."""
