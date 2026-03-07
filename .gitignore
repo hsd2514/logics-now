@@ -8,6 +8,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 ### Python / Backend
+backend/venv/
 backend/.venv/
 backend/__pycache__/
 **/__pycache__/
