@@ -38,8 +38,11 @@ export function FraudAlertPanel() {
   }
 
   const handleDismiss = async (alertId) => {
+    const reviewer = window.prompt("Enter reviewer name for audit log:")
+    if (!reviewer) return
+
     try {
-      await api.dismissAlert(alertId, { user_id: 'user' })
+      await api.dismissAlert(alertId, { user_id: reviewer, notes: "Dismissed via dashboard" })
       fetchAlerts()
     } catch (err) {
       console.error('Failed to dismiss alert:', err)
@@ -47,8 +50,11 @@ export function FraudAlertPanel() {
   }
 
   const handleConfirm = async (alertId) => {
+    const reviewer = window.prompt("Enter reviewer name for audit log:")
+    if (!reviewer) return
+
     try {
-      await api.confirmAlert(alertId, { user_id: 'user' })
+      await api.confirmAlert(alertId, { user_id: reviewer, notes: "Confirmed via dashboard" })
       fetchAlerts()
     } catch (err) {
       console.error('Failed to confirm alert:', err)

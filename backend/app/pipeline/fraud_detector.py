@@ -1,15 +1,16 @@
 from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
+import os
 import numpy as np
+import joblib
 from sklearn.ensemble import IsolationForest
 from datetime import datetime, timedelta
+from pydantic import BaseModel
 
 from app.config import get_settings
 
 settings = get_settings()
 
-@dataclass
-class FraudAlert:
+class FraudAlert(BaseModel):
     alert_type: str
     risk_score: float
     details: Dict
@@ -18,9 +19,19 @@ class FraudAlert:
 class FraudDetector:
     """Stage 6: Dual anomaly detection - Isolation Forest + Pattern Analysis"""
     
+    MODEL_PATH = "isolation_forest.joblib"
+    
     def __init__(self):
         self.isolation_forest = None
         self.feature_names = ['amount', 'frequency_deviation', 'amount_deviation', 'route_anomaly']
+        
+        # Attempt to load saved model to persist training across server restarts
+        if os.path.exists(self.MODEL_PATH):
+            try:
+                self.isolation_forest = joblib.load(self.MODEL_PATH)
+            except Exception:
+                # Log error if loading fails but continue without a pre-trained model
+                pass
     
     def detect(
         self, 
@@ -59,6 +70,25 @@ class FraudDetector:
             if pred_alert:
                 alerts.append(pred_alert)
                 risk_scores.append(pred_alert.risk_score)
+
+        # Check 5: ML Anomaly Detection (Isolation Forest)
+        # Auto-train if not trained but enough history exists
+        if self.isolation_forest is None and historical_triplets:
+            if len(historical_triplets) >= settings.isolation_forest_min_samples:
+                self.train_isolation_forest(historical_triplets)
+        
+        # Score with Isolation Forest if trained
+        if self.isolation_forest:
+            ml_risk = self.score_with_isolation_forest(triplet_data)
+            if ml_risk > settings.isolation_forest_alert_threshold:
+                ml_alert = FraudAlert(
+                    alert_type="ML_ANOMALY",
+                    risk_score=ml_risk,
+                    details={'model': 'IsolationForest', 'risk_score_raw': ml_risk},
+                    reasoning=f"Machine learning model detected an anomaly with risk score {ml_risk:.2f}."
+                )
+                alerts.append(ml_alert)
+                risk_scores.append(ml_alert.risk_score)
         
         # Calculate overall risk
         overall_risk = max(risk_scores) if risk_scores else 0.0
@@ -256,8 +286,8 @@ class FraudDetector:
     
     def train_isolation_forest(self, historical_data: List[Dict]):
         """Train Isolation Forest on historical triplet data."""
-        if len(historical_data) < 10:
-            return
+        if len(historical_data) < settings.isolation_forest_min_samples:
+            return False # Indicate that training did not occur
         
         features = []
         for triplet in historical_data:
@@ -273,9 +303,18 @@ class FraudDetector:
         X = np.array(features)
         self.isolation_forest = IsolationForest(
             contamination=settings.isolation_forest_contamination,
-            random_state=42
+            random_state=settings.isolation_forest_random_state
         )
         self.isolation_forest.fit(X)
+        
+        # Persist trained model
+        try:
+            joblib.dump(self.isolation_forest, self.MODEL_PATH)
+        except Exception:
+            # Log error if saving fails
+            pass
+        
+        return True
     
     def score_with_isolation_forest(self, triplet: Dict) -> float:
         """Score a triplet using trained Isolation Forest."""

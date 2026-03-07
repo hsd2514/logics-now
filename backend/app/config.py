@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     fraud_predictive_round_amount_min: float = 1000.0
     fraud_predictive_round_amount_step: float = 1000.0
     isolation_forest_contamination: float = 0.10
+    isolation_forest_min_samples: int = 10
+    isolation_forest_random_state: int = 42
+    isolation_forest_alert_threshold: float = 0.6  # Risk score threshold for ML alerts
     fraud_high_risk_alert_threshold: float = 0.7  # risk_score above this → force REVIEW + counted as flagged
 
     # Vendor risk thresholds

@@ -6,11 +6,13 @@ from app.models.document import Document, DocumentStatus
 from app.models.triplet import Triplet, TripletStatus
 from app.models.fraud_alert import FraudAlert
 from app.pipeline.triplet_matcher import TripletMatcher
-from app.pipeline.validator import Validator
+from app.pipeline.data_validator import DataValidator
 from app.pipeline.fraud_detector import FraudDetector
 from app.ai.audit_generator import AuditGenerator
 from app.ai.vendor_patterns import VendorPatternLearner
 from app.config import get_settings
+from app.services.websocket_manager import ws_manager
+import asyncio
 
 settings = get_settings()
 
@@ -175,9 +177,14 @@ class MatchingService:
                 ai_reasoning=alert.reasoning
             )
             db.add(fraud_alert)
+            db.flush() # Flush to get ID for websocket
+            
+            asyncio.create_task(ws_manager.send_fraud_alert(
+                fraud_alert.id, fraud_alert.risk_score, fraud_alert.alert_type
+            ))
             
             # If high risk, change status to review
-            if alert.risk_score > 0.7:
+            if alert.risk_score > settings.fraud_high_risk_alert_threshold:
                 triplet.status = TripletStatus.REVIEW
         
         # Update vendor profile
@@ -195,6 +202,12 @@ class MatchingService:
         invoice.status = DocumentStatus.MATCHED
         
         db.commit()
+        
+        # Broadcast match to clients
+        asyncio.create_task(ws_manager.send_match_found(
+            triplet.id, triplet.match_score
+        ))
+        
         return triplet
     
     def approve_triplet(self, db: Session, triplet_id: str, user_id: str, notes: str = None) -> Optional[Triplet]:
@@ -349,9 +362,9 @@ class MatchingService:
         """Convert triplet to dict for fraud detection."""
         return {
             'id': triplet.id,
-            'lr_entities': {},  # Would need to join
-            'pod_entities': {},
-            'invoice_entities': {},
+            'lr_entities': (triplet.lr.entities or {}) if triplet.lr else {},
+            'pod_entities': (triplet.pod.entities or {}) if triplet.pod else {},
+            'invoice_entities': (triplet.invoice.entities or {}) if triplet.invoice else {},
             'created_at': triplet.created_at
         }
     

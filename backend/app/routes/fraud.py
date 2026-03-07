@@ -45,11 +45,14 @@ def get_alert(alert_id: str, db: Session = Depends(get_db)):
     
     return FraudAlertResponse.model_validate(alert)
 
+class ActionRequest(BaseModel):
+    user_id: Optional[str] = None
+    notes: Optional[str] = None
+
 @router.post("/alerts/{alert_id}/dismiss")
 def dismiss_alert(
     alert_id: str,
-    notes: str = None,
-    user_id: str = None,
+    action: ActionRequest,
     db: Session = Depends(get_db)
 ):
     """Dismiss a fraud alert."""
@@ -60,8 +63,8 @@ def dismiss_alert(
     from datetime import datetime
     alert.status = AlertStatus.DISMISSED
     alert.resolved_at = datetime.now()
-    alert.resolved_by = user_id
-    alert.resolution_notes = notes
+    alert.resolved_by = action.user_id
+    alert.resolution_notes = action.notes
     
     db.commit()
     
@@ -70,8 +73,7 @@ def dismiss_alert(
 @router.post("/alerts/{alert_id}/confirm")
 def confirm_alert(
     alert_id: str,
-    notes: str = None,
-    user_id: str = None,
+    action: ActionRequest,
     db: Session = Depends(get_db)
 ):
     """Confirm a fraud alert as legitimate fraud."""
@@ -82,12 +84,13 @@ def confirm_alert(
     from datetime import datetime
     alert.status = AlertStatus.CONFIRMED
     alert.resolved_at = datetime.now()
-    alert.resolved_by = user_id
-    alert.resolution_notes = notes
+    alert.resolved_by = action.user_id
+    alert.resolution_notes = action.notes
     
     db.commit()
     
     return {"message": "Alert confirmed as fraud", "alert_id": alert_id}
+
 
 @router.get("/predictions", response_model=List[PredictiveAlertResponse])
 def get_predictive_alerts(db: Session = Depends(get_db)):
