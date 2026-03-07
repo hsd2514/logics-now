@@ -1,5 +1,7 @@
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session, joinedload
+from typing import List, Optional, Tuple, Dict, Any
+from sqlalchemy.orm import Session
 from datetime import datetime
 
 from app.models.document import Document, DocumentStatus
@@ -275,26 +277,92 @@ class MatchingService:
         db: Session,
         status: Optional[str] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        # NL-query filter fields
+        vendor_name: Optional[str] = None,
+        amount_min: Optional[float] = None,
+        amount_max: Optional[float] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        fraud_risk: Optional[str] = None,   # LOW | MEDIUM | HIGH
     ) -> Tuple[List[Triplet], dict]:
-        """Get triplets with stats."""
+        """Get triplets with stats. All NL-query filters are applied server-side."""
         query = db.query(Triplet)
-        
+
+        # ── DB-level filters ──────────────────────────────────────────────────
         if status:
             query = query.filter(Triplet.status == status)
-        
-        total = query.count()
-        triplets = query.order_by(Triplet.created_at.desc()).offset(skip).limit(limit).all()
-        
-        # Get stats
+
+        if date_from:
+            try:
+                query = query.filter(
+                    Triplet.created_at >= datetime.strptime(date_from, '%Y-%m-%d')
+                )
+            except ValueError:
+                pass
+
+        if date_to:
+            try:
+                query = query.filter(
+                    Triplet.created_at <= datetime.strptime(date_to, '%Y-%m-%d')
+                )
+            except ValueError:
+                pass
+
+        triplets = query.order_by(Triplet.created_at.desc()).all()
+
+        # ── Python-level filters on joined JSON entity data ───────────────────
+        # (SQLite JSON path support is limited; filter in-memory after fetch)
+        if vendor_name or amount_min is not None or amount_max is not None or fraud_risk:
+            filtered = []
+            for t in triplets:
+                inv_entities = (t.invoice.entities or {}) if t.invoice else {}
+
+                # vendor_name — fuzzy match on party_name
+                if vendor_name:
+                    party = (inv_entities.get('party_name') or '').lower()
+                    if vendor_name.lower() not in party:
+                        continue
+
+                # amount filters
+                inv_amount = inv_entities.get('amount')
+                if inv_amount is not None:
+                    try:
+                        amt = float(inv_amount)
+                        if amount_min is not None and amt < amount_min:
+                            continue
+                        if amount_max is not None and amt > amount_max:
+                            continue
+                    except (TypeError, ValueError):
+                        pass
+
+                # fraud_risk
+                if fraud_risk:
+                    # Map HIGH/MEDIUM/LOW to risk score bands
+                    risk_map = {'HIGH': (0.7, 1.0), 'MEDIUM': (0.4, 0.7), 'LOW': (0.0, 0.4)}
+                    lo, hi = risk_map.get(fraud_risk.upper(), (0.0, 1.0))
+                    alert_risks = [a.risk_score for a in (t.fraud_alerts or [])]
+                    max_risk = max(alert_risks) if alert_risks else 0.0
+                    if not (lo <= max_risk <= hi):
+                        continue
+
+                filtered.append(t)
+            triplets = filtered
+
+        total = len(triplets)
+        # Apply pagination after in-memory filtering
+        triplets_page = triplets[skip: skip + limit]
+
+        # ── Stats (always on full unfiltered dataset) ─────────────────────────
+        from app.models.fraud_alert import FraudAlert
         stats = {
             'total': total,
             'pending_review': db.query(Triplet).filter(Triplet.status == TripletStatus.REVIEW).count(),
             'auto_approved': db.query(Triplet).filter(Triplet.status == TripletStatus.AUTO_APPROVED).count(),
-            'flagged': db.query(Triplet).filter(Triplet.status == TripletStatus.REVIEW).count()
+            'flagged': db.query(FraudAlert).filter(FraudAlert.risk_score > settings.fraud_high_risk_alert_threshold).count(),
         }
-        
-        return triplets, stats
+
+        return triplets_page, stats
     
     # ── Private helpers ──────────────────────────────────────────────────────
 
