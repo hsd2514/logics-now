@@ -324,7 +324,8 @@ class MatchingService:
             'type': doc.type,
             'entities': doc.entities or {},
             'text_blocks': doc.text_blocks or [],
-            'ocr_text': doc.ocr_text or ''
+            'ocr_text': doc.ocr_text or '',
+            'embedding': doc.embedding  # Include embedding for contrastive learning
         }
     
     def _triplet_to_dict(self, triplet: Triplet) -> dict:

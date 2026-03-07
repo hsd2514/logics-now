@@ -24,7 +24,8 @@ dependencies = [
     "google-genai>=1.66.0",
 ]
 
-
+[tool.setuptools]
+packages = ["app"]
 
 [dependency-groups]
 dev = [

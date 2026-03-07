@@ -11,6 +11,7 @@ from app.models.audit_log import AuditLog
 from app.pipeline.preprocessor import Preprocessor
 from app.pipeline.ocr_engine import OCREngine
 from app.pipeline.entity_extractor import EntityExtractor
+from app.services.embedding_service import EmbeddingService
 from app.config import get_settings
 
 settings = get_settings()
@@ -38,6 +39,7 @@ class DocumentService:
         self.preprocessor = Preprocessor()
         self.ocr_engine = OCREngine()
         self.entity_extractor = EntityExtractor()
+        self.embedding_service = EmbeddingService()
         self.upload_dir = settings.upload_dir
         
         # Ensure upload directory exists
@@ -119,11 +121,15 @@ class DocumentService:
             ocr_text, document.type
         )
         
+        # Stage 4: Generate embedding for semantic matching
+        embedding = self.embedding_service.generate_document_embedding(entities)
+        
         # Update document
         document.ocr_text = ocr_text
         document.ocr_confidence = ocr_confidence
         document.text_blocks = self.ocr_engine.blocks_to_dict(text_blocks)
         document.entities = entities
+        document.embedding = embedding  # Populate the embedding column
         document.status = DocumentStatus.PROCESSED
         
         db.commit()
@@ -145,11 +151,15 @@ class DocumentService:
             extracted_text, document.type
         )
         
+        # Stage 4: Generate embedding for semantic matching
+        embedding = self.embedding_service.generate_document_embedding(entities)
+        
         # Update document - HTML is perfect quality
         document.ocr_text = extracted_text
         document.ocr_confidence = 1.0  # Perfect extraction from HTML
         document.text_blocks = []  # No spatial data for HTML
         document.entities = entities
+        document.embedding = embedding  # Populate the embedding column
         document.status = DocumentStatus.PROCESSED
         
         db.commit()

@@ -4,6 +4,7 @@ import numpy as np
 from difflib import SequenceMatcher
 
 from app.config import get_settings
+from app.services.embedding_service import EmbeddingService
 
 settings = get_settings()
 
@@ -21,16 +22,22 @@ class TripletMatcher:
     """Stage 4: Match LR-POD-Invoice triplets with confidence scoring"""
     
     def __init__(self):
+        self.embedding_service = EmbeddingService()
+        
         # Relative importance of each field in overall match_score.
+        # Note: Total weights = 1.00 (0.85 for fields + 0.15 for embeddings)
         self.field_weights = {
-            'shipment_id': 0.35,
-            'amount': 0.25,
-            'date': 0.15,
-            'party_name': 0.10,
-            'origin': 0.05,
-            'destination': 0.05,
+            'shipment_id': 0.30,    # Reduced from 0.35
+            'amount': 0.20,         # Reduced from 0.25
+            'date': 0.13,           # Reduced from 0.15
+            'party_name': 0.09,     # Reduced from 0.10
+            'origin': 0.04,         # Reduced from 0.05
+            'destination': 0.04,    # Reduced from 0.05
             'vehicle_number': 0.05,
         }
+        
+        # Weight for semantic embedding similarity
+        self.embedding_weight = 0.15
     
     def match_triplet(
         self, 
@@ -39,10 +46,15 @@ class TripletMatcher:
         invoice_entities: Dict,
         lr_blocks: List[Dict] = None,
         pod_blocks: List[Dict] = None,
-        invoice_blocks: List[Dict] = None
+        invoice_blocks: List[Dict] = None,
+        lr_embedding: Optional[List[float]] = None,
+        pod_embedding: Optional[List[float]] = None,
+        invoice_embedding: Optional[List[float]] = None
     ) -> Tuple[float, float, Dict, List[Dict]]:
         """
         Match three documents and return scores.
+        Now includes embedding-based semantic similarity (contrastive learning).
+        
         Returns: (match_score, confidence, field_matches, attention_map)
         """
         field_matches = {}
@@ -50,6 +62,7 @@ class TripletMatcher:
         total_weight = 0
         weighted_score = 0
         
+        # Calculate field-level matching scores
         for field, weight in self.field_weights.items():
             lr_val = lr_entities.get(field)
             pod_val = pod_entities.get(field)
@@ -68,13 +81,33 @@ class TripletMatcher:
                         self._build_attention_regions(field, match_info, lr_blocks, pod_blocks, invoice_blocks)
                     )
         
+        # Calculate embedding similarity (contrastive learning)
+        embedding_score = self.embedding_service.compare_document_embeddings(
+            lr_embedding, pod_embedding, invoice_embedding
+        )
+        
+        # Add embedding similarity to total score
+        weighted_score += embedding_score * self.embedding_weight
+        total_weight += self.embedding_weight
+        
+        # Store embedding match info
+        field_matches['_embedding_similarity'] = {
+            'score': embedding_score,
+            'matched': embedding_score > 0.7,
+            'values': {
+                'lr': 'vector' if lr_embedding else None,
+                'pod': 'vector' if pod_embedding else None,
+                'invoice': 'vector' if invoice_embedding else None
+            }
+        }
+        
         match_score = weighted_score / total_weight if total_weight > 0 else 0
         
         # Confidence based on how many fields were matched
         fields_matched = sum(1 for f in field_matches.values() if f['score'] > 0.7)
         confidence = min(
             settings.confidence_base +
-            (fields_matched / len(self.field_weights)) * settings.confidence_range,
+            (fields_matched / (len(self.field_weights) + 1)) * settings.confidence_range,  # +1 for embedding
             1.0
         )
         
@@ -250,7 +283,10 @@ class TripletMatcher:
                         inv.get('entities', {}),
                         lr.get('text_blocks'),
                         pod.get('text_blocks'),
-                        inv.get('text_blocks')
+                        inv.get('text_blocks'),
+                        lr.get('embedding'),  # Pass embeddings for contrastive learning
+                        pod.get('embedding'),
+                        inv.get('embedding')
                     )
                     
                     if score > settings.min_match_score:  # configurable minimum threshold
