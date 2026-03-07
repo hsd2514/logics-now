@@ -12,6 +12,7 @@ from app.models.audit_log import AuditLog
 from app.pipeline.preprocessor import Preprocessor
 from app.pipeline.ocr_engine import OCREngine
 from app.pipeline.entity_extractor import EntityExtractor
+from app.pipeline.semantic_normalizer import SemanticFieldNormalizer
 from app.services.embedding_service import EmbeddingService
 from app.config import get_settings
 from app.services.websocket_manager import ws_manager
@@ -42,6 +43,7 @@ class DocumentService:
         self.preprocessor = Preprocessor()
         self.ocr_engine = OCREngine()
         self.entity_extractor = EntityExtractor()
+        self.semantic_normalizer = SemanticFieldNormalizer()
         self.embedding_service = EmbeddingService()
         self.upload_dir = settings.upload_dir
         
@@ -186,7 +188,15 @@ class DocumentService:
             ocr_text, document.type
         )
         timings['ner'] = round((perf_counter() - t_stage) * 1000, 2)
-        
+
+        # Stage 3.5: Semantic Field Normalization & Alias Resolution
+        t_stage = perf_counter()
+        entities, normalization_log = await asyncio.to_thread(
+            self.semantic_normalizer.normalize,
+            entities, ocr_text, document.type
+        )
+        timings['normalization'] = round((perf_counter() - t_stage) * 1000, 2)
+
         # Update document
 
         t_stage = perf_counter()
@@ -246,7 +256,15 @@ class DocumentService:
             extracted_text, document.type
         )
         timings['ner'] = round((perf_counter() - t_stage) * 1000, 2)
-        
+
+        # Stage 3.5: Semantic Field Normalization & Alias Resolution
+        t_stage = perf_counter()
+        entities, normalization_log = await asyncio.to_thread(
+            self.semantic_normalizer.normalize,
+            entities, extracted_text, document.type
+        )
+        timings['normalization'] = round((perf_counter() - t_stage) * 1000, 2)
+
         # Update document - HTML is perfect quality
         t_stage = perf_counter()
         document.ocr_text = extracted_text
