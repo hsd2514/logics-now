@@ -446,19 +446,6 @@ class MatchingService:
             'frequency_score': freq,
             'amount_deviation': amt_dev,
             'route_score': route_score
-    def _triplet_to_dict(self, triplet: Triplet) -> dict:
-        """Convert triplet to dict for fraud detection.
-        
-        Populates entity fields from the linked Document relationships so that
-        historical duplicate, vendor-frequency, and amount-comparison checks
-        in FraudDetector have real data to work with.
-        """
-        return {
-            'id': triplet.id,
-            'lr_entities': (triplet.lr.entities or {}) if triplet.lr else {},
-            'pod_entities': (triplet.pod.entities or {}) if triplet.pod else {},
-            'invoice_entities': (triplet.invoice.entities or {}) if triplet.invoice else {},
-            'created_at': triplet.created_at
         }
     
     def _get_recent_triplets(self, db: Session, limit: int = 100) -> List[Triplet]:
