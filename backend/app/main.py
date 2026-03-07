@@ -41,9 +41,8 @@ async def websocket_endpoint(websocket: WebSocket):
     await ws_manager.connect(websocket)
     try:
         while True:
-            data = await websocket.receive_text()
-            # Echo or handle incoming messages
-            await ws_manager.send_personal_message(f"Received: {data}", websocket)
+            # Keep connection alive; clients may send pings but server is event-driven.
+            await websocket.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
 

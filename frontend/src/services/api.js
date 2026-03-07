@@ -39,6 +39,9 @@ export const getTriplets = (params = {}) => {
   if (params.date_from)   query.date_from   = params.date_from
   if (params.date_to)     query.date_to     = params.date_to
   if (params.fraud_risk)  query.fraud_risk  = params.fraud_risk
+  if (params.document_type) query.document_type = params.document_type
+  if (params.route_origin) query.route_origin = params.route_origin
+  if (params.route_destination) query.route_destination = params.route_destination
   if (params.skip  != null) query.skip  = params.skip
   if (params.limit != null) query.limit = params.limit
   return api.get('/triplets', { params: query })

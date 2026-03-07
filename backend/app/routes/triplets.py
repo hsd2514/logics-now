@@ -18,7 +18,14 @@ async def run_matching(db: Session = Depends(get_db)):
     
     # Broadcast all collected events
     for event in events:
-        if event['type'] == 'fraud_alert':
+        if event['type'] == 'processing_update':
+            await ws_manager.send_processing_update(
+                event['document_id'],
+                event['stage'],
+                event['progress'],
+                event['message']
+            )
+        elif event['type'] == 'fraud_alert':
             await ws_manager.send_fraud_alert(
                 event['id'], event['risk_score'], event['alert_type']
             )
@@ -43,6 +50,9 @@ def list_triplets(
     date_from: Optional[str] = Query(None, description="Filter triplets created on or after this date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="Filter triplets created on or before this date (YYYY-MM-DD)"),
     fraud_risk: Optional[str] = Query(None, description="Fraud risk level: LOW | MEDIUM | HIGH"),
+    document_type: Optional[str] = Query(None, description="Document type scope for filters: LR | POD | INVOICE"),
+    route_origin: Optional[str] = Query(None, description="Filter by origin city (partial match)"),
+    route_destination: Optional[str] = Query(None, description="Filter by destination city (partial match)"),
     db: Session = Depends(get_db)
 ):
     """List triplets. Supports all NL-query filter fields server-side."""
@@ -57,6 +67,9 @@ def list_triplets(
         date_from=date_from,
         date_to=date_to,
         fraud_risk=fraud_risk,
+        document_type=document_type,
+        route_origin=route_origin,
+        route_destination=route_destination,
     )
     
     return TripletListResponse(
