@@ -34,16 +34,16 @@ function App() {
   const toast = useToast()
   const { isDark, toggle: toggleTheme } = useTheme()
 
-  const [demoLoading,     setDemoLoading]     = useState(false)
-  const [activeTab,       setActiveTab]       = useState('dashboard')
-  const [stats,           setStats]           = useState(null)
-  const [statsLoading,    setStatsLoading]    = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('dashboard')
+  const [stats, setStats] = useState(null)
+  const [statsLoading, setStatsLoading] = useState(false)
   const [selectedTriplet, setSelectedTriplet] = useState(null)
-  const [compareTriplet,  setCompareTriplet]  = useState(null)
-  const [chatDocument,    setChatDocument]    = useState(null)
-  const [filters,         setFilters]         = useState({})
-  const [page,            setPage]            = useState(1)
-  const [fraudAlerts,     setFraudAlerts]     = useState([])
+  const [compareTriplet, setCompareTriplet] = useState(null)
+  const [chatDocument, setChatDocument] = useState(null)
+  const [filters, setFilters] = useState({})
+  const [page, setPage] = useState(1)
+  const [fraudAlerts, setFraudAlerts] = useState([])
   const navItems = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { key: 'charts', label: 'Analytics', icon: BarChart2 },
@@ -53,13 +53,14 @@ function App() {
     { key: 'fraud', label: 'Fraud Detection', icon: ShieldAlert },
   ]
 
+
   const { documents, fetchDocuments, uploadDocument, loading: docsLoading, error: docsError } = useDocuments()
   const { triplets, stats: tripletStats, fetchTriplets, runMatching, approveTriplet, rejectTriplet, loading: tripletsLoading, error: tripletsError } = useTriplets()
   const { isConnected, lastMessage } = useWebSocket()
 
   // Show hook errors as toasts
-  useEffect(() => { if (docsError)     toast({ type: 'error', title: 'Document error',  description: docsError })     }, [docsError])
-  useEffect(() => { if (tripletsError) toast({ type: 'error', title: 'Triplets error',  description: tripletsError }) }, [tripletsError])
+  useEffect(() => { if (docsError) toast({ type: 'error', title: 'Document error', description: docsError }) }, [docsError])
+  useEffect(() => { if (tripletsError) toast({ type: 'error', title: 'Triplets error', description: tripletsError }) }, [tripletsError])
 
   useEffect(() => {
     fetchStats()
@@ -96,7 +97,7 @@ function App() {
     try {
       const response = await api.getFraudAlerts({})
       setFraudAlerts(response.data.alerts || [])
-    } catch {}
+    } catch { }
   }
 
   const handleUpload = async (file, docType) => {
@@ -191,7 +192,7 @@ function App() {
     if (filters.status && t.status !== filters.status) return false
     return true
   })
-  const totalPages    = Math.max(1, Math.ceil(filteredTriplets.length / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(filteredTriplets.length / PAGE_SIZE))
   const pagedTriplets = filteredTriplets.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   useEffect(() => { setPage(1) }, [filters])
 
@@ -210,13 +211,13 @@ function App() {
                 <h1 className="text-lg font-bold leading-none">FreightIQ</h1>
                 <p className="text-[11px] text-muted-foreground">Team Up Up & Debug · LogisticsNow Hackathon 2026</p>
               </div>
-              <Badge className="hidden md:inline-flex bg-amber-100 text-amber-800 border border-amber-300">Hackathon Demo</Badge>
+              <Badge className="hidden md:inline-flex bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">Hackathon Demo</Badge>
             </div>
             <div className="flex items-center gap-2">
               <div className="hidden sm:flex items-center gap-1.5 text-xs">
                 {isConnected
-                  ? <><Wifi    className="h-3.5 w-3.5 text-green-500" /><span className="text-green-600">Live</span></>
-                  : <><WifiOff className="h-3.5 w-3.5 text-red-500"  /><span className="text-red-600">Offline</span></>
+                  ? <><Wifi className="h-3.5 w-3.5 text-green-500" /><span className="text-green-600">Live</span></>
+                  : <><WifiOff className="h-3.5 w-3.5 text-red-500" /><span className="text-red-600">Offline</span></>
                 }
               </div>
               {/* Demo buttons */}
@@ -282,9 +283,8 @@ function App() {
                     <button
                       key={item.key}
                       onClick={() => setActiveTab(item.key)}
-                      className={`w-full flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${
-                        activeTab === item.key ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
-                      }`}
+                      className={`w-full flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${activeTab === item.key ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                        }`}
                     >
                       <span className="flex items-center gap-2">
                         <Icon className="h-4 w-4" />
@@ -308,156 +308,156 @@ function App() {
             </aside>
             <section>
 
-          {/* Dashboard */}
-          <TabsContent value="dashboard">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-semibold">
-                    Matched Triplets
-                    <span className="ml-2 text-xs text-muted-foreground font-normal">({filteredTriplets.length} total)</span>
-                  </h2>
-                  <Button size="sm" onClick={handleRunMatching} disabled={tripletsLoading}>
-                    {tripletsLoading
-                      ? <><span className="animate-spin mr-1.5 h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full inline-block" />Matching…</>
-                      : 'Run Matching'
-                    }
-                  </Button>
-                </div>
-
-                {/* #21 Loading skeletons */}
-                {tripletsLoading && triplets.length === 0 ? (
-                  <div className="grid gap-4">
-                    {Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}
-                  </div>
-                ) : pagedTriplets.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-12 text-center text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                      <p>No triplets found. Upload documents and run matching.</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <>
-                    <div className="grid gap-4">
-                      {pagedTriplets.map(triplet => (
-                        <TripletCard
-                          key={triplet.id}
-                          triplet={triplet}
-                          onApprove={handleApprove}
-                          onReject={handleReject}
-                          onViewDetails={t => { setSelectedTriplet(t); setCompareTriplet(t) }}
-                          onChat={() => setChatDocument({ id: triplet.lr_id, name: 'LR Document' })}
-                          onExportAudit={(t) => handleExportAudit(t.id, 'pdf')}
-                        />
-                      ))}
+              {/* Dashboard */}
+              <TabsContent value="dashboard">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-base font-semibold">
+                        Matched Triplets
+                        <span className="ml-2 text-xs text-muted-foreground font-normal">({filteredTriplets.length} total)</span>
+                      </h2>
+                      <Button size="sm" onClick={handleRunMatching} disabled={tripletsLoading}>
+                        {tripletsLoading
+                          ? <><span className="animate-spin mr-1.5 h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full inline-block" />Matching…</>
+                          : 'Run Matching'
+                        }
+                      </Button>
                     </div>
 
-                    {/* #21 Pagination */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-between text-sm mt-2">
-                        <span className="text-muted-foreground">Page {page} of {totalPages}</span>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
+                    {/* #21 Loading skeletons */}
+                    {tripletsLoading && triplets.length === 0 ? (
+                      <div className="grid gap-4">
+                        {Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}
                       </div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Sidebar */}
-              <div className="space-y-4">
-                {chatDocument ? (
-                  <DocumentChat documentId={chatDocument.id} documentName={chatDocument.name} onClose={() => setChatDocument(null)} />
-                ) : selectedTriplet?.attention_map ? (
-                  <AttentionHeatmap attentionMap={selectedTriplet.attention_map} />
-                ) : (
-                  <Card>
-                    <CardHeader><CardTitle className="text-sm">Quick Stats</CardTitle></CardHeader>
-                    <CardContent className="space-y-3">
-                      {[
-                        ['Auto-approved', tripletStats.autoApproved || 0],
-                        ['Pending Review', tripletStats.pendingReview || 0],
-                        ['Flagged', tripletStats.flagged || 0],
-                      ].map(([label, value]) => (
-                        <div key={label} className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">{label}</span>
-                          <span className="font-medium">{value}</span>
+                    ) : pagedTriplets.length === 0 ? (
+                      <Card>
+                        <CardContent className="py-12 text-center text-muted-foreground">
+                          <FileText className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                          <p>No triplets found. Upload documents and run matching.</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <>
+                        <div className="grid gap-4">
+                          {pagedTriplets.map(triplet => (
+                            <TripletCard
+                              key={triplet.id}
+                              triplet={triplet}
+                              onApprove={handleApprove}
+                              onReject={handleReject}
+                              onViewDetails={t => { setSelectedTriplet(t); setCompareTriplet(t) }}
+                              onChat={() => setChatDocument({ id: triplet.lr_id, name: 'LR Document' })}
+                              onExportAudit={(t) => handleExportAudit(t.id, 'pdf')}
+                            />
+                          ))}
                         </div>
-                      ))}
+
+                        {/* #21 Pagination */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between text-sm mt-2">
+                            <span className="text-muted-foreground">Page {page} of {totalPages}</span>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                                <ChevronLeft className="h-4 w-4" />
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Sidebar */}
+                  <div className="space-y-4 lg:sticky lg:top-20 h-fit">
+                    {chatDocument ? (
+                      <DocumentChat documentId={chatDocument.id} documentName={chatDocument.name} onClose={() => setChatDocument(null)} />
+                    ) : selectedTriplet?.attention_map ? (
+                      <AttentionHeatmap attentionMap={selectedTriplet.attention_map} />
+                    ) : (
+                      <Card>
+                        <CardHeader><CardTitle className="text-sm">Quick Stats</CardTitle></CardHeader>
+                        <CardContent className="space-y-3">
+                          {[
+                            ['Auto-approved', tripletStats.autoApproved || 0],
+                            ['Pending Review', tripletStats.pendingReview || 0],
+                            ['Flagged', tripletStats.flagged || 0],
+                          ].map(([label, value]) => (
+                            <div key={label} className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">{label}</span>
+                              <span className="font-medium">{value}</span>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* #22 Charts tab */}
+              <TabsContent value="charts">
+                <div className="space-y-4">
+                  <h2 className="text-base font-semibold">Data Visualisation</h2>
+                  <DashboardCharts triplets={triplets} fraudAlerts={fraudAlerts} stats={stats} />
+                </div>
+              </TabsContent>
+
+              {/* Upload */}
+              <TabsContent value="upload">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <DocumentUpload onUpload={handleUpload} />
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">
+                        Recent Uploads
+                        {docsLoading && <span className="ml-2 text-xs font-normal text-muted-foreground animate-pulse">Loading…</span>}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {documents.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-6 text-sm">No documents uploaded yet</p>
+                      ) : (
+                        <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                          {documents.slice(0, 50).map(doc => (
+                            <div key={doc.id} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                                <span className="truncate max-w-[180px]" title={doc.file_name}>{doc.file_name}</span>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <Badge variant="outline" className="text-xs">{doc.type}</Badge>
+                                <Badge variant={doc.status === 'PROCESSED' ? 'success' : 'secondary'} className="text-xs">{doc.status}</Badge>
+                                {doc.processing_time_ms?.total ? (
+                                  <Badge variant="outline" className="text-xs">{(doc.processing_time_ms.total / 1000).toFixed(2)}s</Badge>
+                                ) : null}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
-                )}
-              </div>
-            </div>
-          </TabsContent>
+                </div>
+              </TabsContent>
 
-          {/* #22 Charts tab */}
-          <TabsContent value="charts">
-            <div className="space-y-4">
-              <h2 className="text-base font-semibold">Data Visualisation</h2>
-              <DashboardCharts triplets={triplets} fraudAlerts={fraudAlerts} stats={stats} />
-            </div>
-          </TabsContent>
+              {/* #30 Batch Upload */}
+              <TabsContent value="batch">
+                <BatchUploadProgress />
+              </TabsContent>
 
-          {/* Upload */}
-          <TabsContent value="upload">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <DocumentUpload onUpload={handleUpload} />
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">
-                    Recent Uploads
-                    {docsLoading && <span className="ml-2 text-xs font-normal text-muted-foreground animate-pulse">Loading…</span>}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {documents.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-6 text-sm">No documents uploaded yet</p>
-                  ) : (
-                    <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
-                      {documents.slice(0, 50).map(doc => (
-                        <div key={doc.id} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                            <span className="truncate max-w-[180px]" title={doc.file_name}>{doc.file_name}</span>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <Badge variant="outline" className="text-xs">{doc.type}</Badge>
-                            <Badge variant={doc.status === 'PROCESSED' ? 'success' : 'secondary'} className="text-xs">{doc.status}</Badge>
-                            {doc.processing_time_ms?.total ? (
-                              <Badge variant="outline" className="text-xs">{(doc.processing_time_ms.total / 1000).toFixed(2)}s</Badge>
-                            ) : null}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+              {/* #28 Vendor Analytics */}
+              <TabsContent value="vendors">
+                <VendorAnalytics />
+              </TabsContent>
 
-          {/* #30 Batch Upload */}
-          <TabsContent value="batch">
-            <BatchUploadProgress />
-          </TabsContent>
-
-          {/* #28 Vendor Analytics */}
-          <TabsContent value="vendors">
-            <VendorAnalytics />
-          </TabsContent>
-
-          {/* Fraud */}
-          <TabsContent value="fraud">
-            <FraudAlertPanel />
-          </TabsContent>
+              {/* Fraud */}
+              <TabsContent value="fraud">
+                <FraudAlertPanel />
+              </TabsContent>
             </section>
           </div>
         </Tabs>

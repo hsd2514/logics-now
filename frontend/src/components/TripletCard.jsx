@@ -39,26 +39,26 @@ export function TripletCard({ triplet, onApprove, onReject, onViewDetails, onCha
           {getStatusBadge(triplet.status)}
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {/* Document References */}
         <div className="grid grid-cols-3 gap-2 text-sm">
-          <div className="flex items-center gap-1 p-2 bg-blue-50 rounded">
-            <FileText className="h-4 w-4 text-blue-500" />
+          <div className="flex items-center gap-1 p-2 bg-blue-100/50 dark:bg-blue-900/20 rounded">
+            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <div>
               <div className="text-xs text-muted-foreground">LR</div>
               <div className="font-mono text-xs">{triplet.lr_id.slice(0, 8)}</div>
             </div>
           </div>
-          <div className="flex items-center gap-1 p-2 bg-green-50 rounded">
-            <FileText className="h-4 w-4 text-green-500" />
+          <div className="flex items-center gap-1 p-2 bg-green-100/50 dark:bg-green-900/20 rounded">
+            <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
             <div>
               <div className="text-xs text-muted-foreground">POD</div>
               <div className="font-mono text-xs">{triplet.pod_id.slice(0, 8)}</div>
             </div>
           </div>
-          <div className="flex items-center gap-1 p-2 bg-purple-50 rounded">
-            <FileText className="h-4 w-4 text-purple-500" />
+          <div className="flex items-center gap-1 p-2 bg-purple-100/50 dark:bg-purple-900/20 rounded">
+            <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             <div>
               <div className="text-xs text-muted-foreground">Invoice</div>
               <div className="font-mono text-xs">{triplet.invoice_id.slice(0, 8)}</div>
@@ -73,7 +73,7 @@ export function TripletCard({ triplet, onApprove, onReject, onViewDetails, onCha
             <span className="font-medium">{confidencePercent}%</span>
           </div>
           <div className="relative h-2 rounded-full bg-muted overflow-hidden">
-            <div 
+            <div
               className={`h-full transition-all ${getConfidenceColor(triplet.confidence)}`}
               style={{ width: `${confidencePercent}%` }}
             />
@@ -116,17 +116,17 @@ export function TripletCard({ triplet, onApprove, onReject, onViewDetails, onCha
         </Button>
         {triplet.status === 'REVIEW' && (
           <>
-            <Button 
-              variant="default" 
-              size="sm" 
+            <Button
+              variant="default"
+              size="sm"
               className="ml-auto"
               onClick={() => onApprove?.(triplet.id)}
             >
               <CheckCircle className="h-4 w-4 mr-1" />
               Approve
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               size="sm"
               onClick={() => onReject?.(triplet.id)}
             >

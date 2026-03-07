@@ -13,6 +13,7 @@ class DocumentType(str, enum.Enum):
 
 class DocumentStatus(str, enum.Enum):
     PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
     PROCESSED = "PROCESSED"
     MATCHED = "MATCHED"
     ERROR = "ERROR"

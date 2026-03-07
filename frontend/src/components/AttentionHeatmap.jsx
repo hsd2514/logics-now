@@ -5,9 +5,9 @@ import { Badge } from './ui/badge'
 const DOC_TYPES = ['LR', 'POD', 'INVOICE']
 
 const SCORE_STYLE = (score) => {
-  if (score >= 0.8) return { box: 'border-green-500 bg-green-500/20', text: 'text-green-700', label: 'High' }
-  if (score >= 0.5) return { box: 'border-yellow-500 bg-yellow-500/20', text: 'text-yellow-700', label: 'Mid' }
-  return { box: 'border-red-500 bg-red-500/20', text: 'text-red-700', label: 'Low' }
+  if (score >= 0.8) return { box: 'border-green-500 bg-green-500/20', text: 'text-green-600 dark:text-green-400', label: 'High' }
+  if (score >= 0.5) return { box: 'border-yellow-500 bg-yellow-500/20', text: 'text-yellow-600 dark:text-yellow-400', label: 'Mid' }
+  return { box: 'border-red-500 bg-red-500/20', text: 'text-red-600 dark:text-red-400', label: 'Low' }
 }
 
 /**
@@ -76,9 +76,9 @@ function DocumentCanvas({ regions, docType }) {
               key={idx}
               className={`absolute border-2 rounded transition-all cursor-default ${style.box}`}
               style={{
-                left:   `${(x * 100).toFixed(2)}%`,
-                top:    `${(y * 100).toFixed(2)}%`,
-                width:  `${(w * 100).toFixed(2)}%`,
+                left: `${(x * 100).toFixed(2)}%`,
+                top: `${(y * 100).toFixed(2)}%`,
+                width: `${(w * 100).toFixed(2)}%`,
                 height: `${(h * 100).toFixed(2)}%`,
               }}
               title={`${region.field} · ${Math.round(region.score * 100)}% match`}
@@ -144,11 +144,10 @@ export function AttentionHeatmap({ attentionMap }) {
             <button
               key={dt}
               onClick={() => setActiveDoc(dt)}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                activeDoc === dt
+              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${activeDoc === dt
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
+                }`}
             >
               {dt}
               <span className="ml-1 opacity-60">({regionsByDoc[dt].length})</span>
@@ -163,8 +162,8 @@ export function AttentionHeatmap({ attentionMap }) {
         <div className="flex items-center gap-4 text-xs flex-wrap">
           {[
             { label: 'High match (80%+)', cls: 'bg-green-500/40 border-green-500' },
-            { label: 'Partial (50–80%)',  cls: 'bg-yellow-500/40 border-yellow-500' },
-            { label: 'Low (<50%)',        cls: 'bg-red-500/40 border-red-500' },
+            { label: 'Partial (50–80%)', cls: 'bg-yellow-500/40 border-yellow-500' },
+            { label: 'Low (<50%)', cls: 'bg-red-500/40 border-red-500' },
           ].map(({ label, cls }) => (
             <div key={label} className="flex items-center gap-1">
               <div className={`w-3 h-3 rounded border-2 ${cls}`} />
