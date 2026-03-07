@@ -17,6 +17,7 @@ class AuditGenerator:
 
     def __init__(self):
         self.client = genai.Client(api_key=settings.google_api_key) if settings.google_api_key else None
+        self._model = settings.gemini_model
 
     def generate_match_explanation(
         self, 
@@ -53,7 +54,7 @@ Generate a professional audit explanation for this {decision} decision."""
 
         try:
             response = self.client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=self._model,
                 contents=context,
                 config=types.GenerateContentConfig(
                     system_instruction=self.SYSTEM_INSTRUCTION,
@@ -86,7 +87,7 @@ Generate a clear explanation of this fraud alert for the compliance team."""
 
         try:
             response = self.client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=self._model,
                 contents=context,
                 config=types.GenerateContentConfig(
                     system_instruction=self.SYSTEM_INSTRUCTION,

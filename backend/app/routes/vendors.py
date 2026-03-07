@@ -54,9 +54,7 @@ def list_vendor_profiles(
 def get_vendor_details(vendor_name: str, db: Session = Depends(get_db)):
     """Get detailed information about a specific vendor."""
     try:
-        print(f"Getting details for vendor: {vendor_name}")
         details = vendor_service.get_vendor_details(db, vendor_name)
-        print(f"Got details: {details is not None}")
         
         if not details:
             raise HTTPException(status_code=404, detail="Vendor not found")
@@ -65,10 +63,7 @@ def get_vendor_details(vendor_name: str, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error in get_vendor_details: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error loading vendor details: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error loading vendor details")
 
 
 @router.post("/refresh")

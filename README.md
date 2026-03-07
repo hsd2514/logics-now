@@ -25,16 +25,34 @@ FreightIQ is an intelligent document processing system that automates the matchi
 4. **Predictive Alerts** - Detect fraud BEFORE it happens
 5. **Document Chat** - Ask questions about any document
 
+### Advanced ML Pipeline
+- **Active Learning** - LogisticRegression model that improves from human approve/reject feedback
+- **Contrastive Learning** - Positive/negative similarity centroid tracking for better match scoring
+- **Graph Attention Network** - GAT-style scorer using shared-entity edge attention across document pairs
+- **Embedding Similarity** - Deterministic hashing-based embeddings + Gemini text-embedding-004 (with local fallback)
+- **Autoencoder Anomaly Detection** - MLP reconstruction error for fraud signal
+- **IsolationForest** - Unsupervised anomaly detection with auto-training
+
+### Additional Capabilities
+- **Vendor Risk Analytics** - Risk profiling, scoring, and monitoring dashboard
+- **Batch Upload** - WebSocket-based real-time progress tracking per file
+- **CSV/PDF Export** - One-click export for triplets, fraud alerts, and audit trails
+- **Demo Generator** - Generates synthetic LR+POD+Invoice sets (normal or anomalous) for live demos
+- **Dark Mode** - Full theme toggle with localStorage persistence
+- **Side-by-Side Comparison** - 3-panel TripletComparisonView with entity matching indicators
+
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | React + shadcn/ui + Tailwind CSS |
-| Backend | FastAPI (Python) |
+| Frontend | React 18 + shadcn/ui + Tailwind CSS + Recharts |
+| Backend | FastAPI (Python 3.11+) |
 | Database | SQLite + SQLAlchemy (PostgreSQL ready) |
-| AI/LLM | OpenAI + Vercel AI SDK |
-| OCR | Tesseract |
-| ML | scikit-learn |
+| AI/LLM | Google Gemini 2.5 Flash |
+| OCR | Tesseract + OpenCV |
+| ML | scikit-learn (IsolationForest, LogisticRegression, MLPRegressor) |
+| Real-time | WebSocket (FastAPI native) |
+| Testing | pytest (81 tests) |
 
 ## Project Structure
 
