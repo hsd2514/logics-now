@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList,
+  PieChart, Pie, Cell, Legend, AreaChart, Area,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { TrendingUp, PieChart as PieIcon, BarChart2, Activity } from 'lucide-react'
@@ -45,14 +45,39 @@ function buildConfidenceBuckets(triplets) {
 function buildStatusData(triplets) {
   const counts = {}
   triplets.forEach(t => { counts[t.status] = (counts[t.status] || 0) + 1 })
-  return Object.entries(counts).map(([status, count]) => ({ status, count }))
+  const total = triplets.length || 1
+  return Object.entries(counts).map(([status, count]) => ({
+    status,
+    count,
+    pct: Math.round((count / total) * 100),
+  }))
 }
 
 /* Fraud type breakdown */
 function buildFraudData(fraudAlerts) {
   const counts = {}
   fraudAlerts.forEach(a => { counts[a.alert_type] = (counts[a.alert_type] || 0) + 1 })
-  return Object.entries(counts).map(([type, value]) => ({ type, value }))
+  const total = fraudAlerts.length || 1
+  return Object.entries(counts).map(([type, value]) => ({
+    type,
+    value,
+    pct: Math.round((value / total) * 100),
+  }))
+}
+
+/* Custom pie label — renders outside slice with a line */
+const renderPieLabel = ({ cx, cy, midAngle, outerRadius, pct, type }) => {
+  if (pct < 5) return null          // skip tiny slices
+  const RADIAN = Math.PI / 180
+  const r  = outerRadius + 22
+  const x  = cx + r * Math.cos(-midAngle * RADIAN)
+  const y  = cy + r * Math.sin(-midAngle * RADIAN)
+  return (
+    <text x={x} y={y} fill="currentColor" textAnchor={x > cx ? 'start' : 'end'}
+          dominantBaseline="central" fontSize={10} className="fill-foreground">
+      {pct}%
+    </text>
+  )
 }
 
 /* Synthetic trend — group triplets created by day */
@@ -63,7 +88,7 @@ function buildTrends(triplets) {
     if (!byDay[day]) byDay[day] = { date: day, total: 0, approved: 0, flagged: 0 }
     byDay[day].total++
     if (['AUTO_APPROVED', 'APPROVED'].includes(t.status)) byDay[day].approved++
-    if (t.risk_score > 0.5) byDay[day].flagged++
+    if (t.status === 'REVIEW' || t.status === 'REJECTED') byDay[day].flagged++
   })
   return Object.values(byDay).sort((a, b) => a.date.localeCompare(b.date)).slice(-14)
 }
@@ -133,25 +158,26 @@ export function DashboardCharts({ triplets = [], fraudAlerts = [], stats = null 
           {noFraud ? (
             <EmptyChart message="No fraud alerts" icon="🛡️" />
           ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
+            <ResponsiveContainer width="100%" height={230}>
+              <PieChart margin={{ top: 10, right: 40, bottom: 0, left: 40 }}>
                 <Pie
                   data={fraudData}
                   dataKey="value"
                   nameKey="type"
                   cx="50%"
-                  cy="50%"
-                  outerRadius={70}
-                  innerRadius={35}
+                  cy="46%"
+                  outerRadius={65}
+                  innerRadius={30}
                   paddingAngle={3}
-                  label={({ type, percent }) => `${type} ${(percent * 100).toFixed(0)}%`}
-                  labelLine={false}
+                  label={renderPieLabel}
+                  labelLine
                 >
                   {fraudData.map((entry, i) => (
                     <Cell key={i} fill={FRAUD_COLORS[entry.type] || COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(val, name) => [val, name]} />
+                <Tooltip formatter={(val, _, props) => [`${val} (${props.payload.pct}%)`, props.payload.type]} />
+                <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -180,6 +206,7 @@ export function DashboardCharts({ triplets = [], fraudAlerts = [], stats = null 
                   {statusData.map((entry, i) => (
                     <Cell key={i} fill={STATUS_COLORS[entry.status] || COLORS[i % COLORS.length]} />
                   ))}
+                  <LabelList dataKey="pct" position="right" formatter={v => `${v}%`} style={{ fontSize: 10, fill: 'currentColor' }} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>

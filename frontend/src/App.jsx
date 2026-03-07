@@ -82,7 +82,7 @@ function App() {
 
   const fetchFraudAlerts = async () => {
     try {
-      const response = await api.getFraudAlerts({ status: 'OPEN' })
+      const response = await api.getFraudAlerts({})
       setFraudAlerts(response.data.alerts || [])
     } catch {}
   }
