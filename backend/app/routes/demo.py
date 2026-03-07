@@ -209,7 +209,7 @@ async def generate_demo(
     inv_doc = await _create_and_process(db, inv_id, inv_path, f"INV_{d['inv_no']}.html", "INVOICE")
 
     # Run matching
-    triplets = matching_service.match_documents(db)
+    triplets, events = matching_service.match_documents(db)
 
     return {
         "message": f"Demo documents created and {'anomalous ' if anomaly else ''}triplet matched.",
