@@ -1,6 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-export function useWebSocket(url = 'ws://localhost:8000/ws/processing') {
+const getWsUrl = () => {
+  if (typeof window === 'undefined') return 'ws://localhost:8000/ws/processing'
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  // If we are served from Vite on port 5173, point to backend 8000
+  // Otherwise use the same host (e.g. for production deployments)
+  const host = window.location.port === '5173' || window.location.port === '3000' 
+    ? `${window.location.hostname}:8000` 
+    : window.location.host
+  return `${protocol}//${host}/ws/processing`
+}
+
+export function useWebSocket(url = getWsUrl()) {
   const [isConnected, setIsConnected] = useState(false)
   const [lastMessage, setLastMessage] = useState(null)
   const [messages, setMessages] = useState([])

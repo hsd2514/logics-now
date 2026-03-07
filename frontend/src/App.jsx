@@ -68,13 +68,12 @@ function App() {
 
   const handleFiltersApplied = (newFilters) => {
     setFilters(newFilters)
+    // Pass ALL filters to the server — no client-side post-filtering needed
     fetchTriplets(newFilters)
   }
 
-  const filteredTriplets = triplets.filter(t => {
-    if (filters.status && t.status !== filters.status) return false
-    return true
-  })
+  // Count how many active filters are applied
+  const activeFilterCount = Object.keys(filters).filter(k => filters[k] != null && filters[k] !== '').length
 
   return (
     <div className="min-h-screen bg-background">
@@ -146,22 +145,29 @@ function App() {
               {/* Triplet List */}
               <div className="lg:col-span-2 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Matched Triplets</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-semibold">Matched Triplets</h2>
+                    {activeFilterCount > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} active
+                      </Badge>
+                    )}
+                  </div>
                   <Button onClick={handleRunMatching} disabled={tripletsLoading}>
                     {tripletsLoading ? 'Matching...' : 'Run Matching'}
                   </Button>
                 </div>
                 
-                {filteredTriplets.length === 0 ? (
+                {triplets.length === 0 ? (
                   <Card>
                     <CardContent className="py-8 text-center text-muted-foreground">
                       <FileText className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                      <p>No triplets found. Upload documents and run matching.</p>
+                      <p>{activeFilterCount > 0 ? 'No triplets match the current filters.' : 'No triplets found. Upload documents and run matching.'}</p>
                     </CardContent>
                   </Card>
                 ) : (
                   <div className="grid gap-4">
-                    {filteredTriplets.map(triplet => (
+                    {triplets.map(triplet => (
                       <TripletCard
                         key={triplet.id}
                         triplet={triplet}

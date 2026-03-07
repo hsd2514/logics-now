@@ -5,6 +5,8 @@ from difflib import SequenceMatcher
 
 from app.config import get_settings
 from app.services.embedding_service import EmbeddingService
+from app.pipeline.contrastive_learner import ContrastiveLearner
+from app.pipeline.graph_attention import GraphAttentionScorer
 
 settings = get_settings()
 
@@ -17,26 +19,27 @@ class MatchResult:
     confidence: float
     field_matches: Dict[str, Dict]
     attention_map: List[Dict]
+    embedding_similarity: float = 0.0
+    contrastive_score: float = 0.0
+    graph_score: float = 0.0
 
 class TripletMatcher:
     """Stage 4: Match LR-POD-Invoice triplets with confidence scoring"""
     
     def __init__(self):
-        self.embedding_service = EmbeddingService()
-        
         # Relative importance of each field in overall match_score.
-        # Note: Total weights = 1.00 (0.85 for fields + 0.15 for embeddings)
         self.field_weights = {
-            'shipment_id': 0.30,    # Reduced from 0.35
-            'amount': 0.20,         # Reduced from 0.25
-            'date': 0.13,           # Reduced from 0.15
-            'party_name': 0.09,     # Reduced from 0.10
-            'origin': 0.04,         # Reduced from 0.05
-            'destination': 0.04,    # Reduced from 0.05
+            'shipment_id': 0.30,
+            'amount': 0.20,
+            'date': 0.13,
+            'party_name': 0.09,
+            'origin': 0.04,
+            'destination': 0.04,
             'vehicle_number': 0.05,
         }
-        
-        # Weight for semantic embedding similarity
+        self.embedding_service = EmbeddingService()
+        self.contrastive_learner = ContrastiveLearner()
+        # Backward-compatible attribute expected by issue-14 tests.
         self.embedding_weight = 0.15
     
     def match_triplet(
@@ -44,17 +47,16 @@ class TripletMatcher:
         lr_entities: Dict, 
         pod_entities: Dict, 
         invoice_entities: Dict,
-        lr_blocks: List[Dict] = None,
-        pod_blocks: List[Dict] = None,
-        invoice_blocks: List[Dict] = None,
         lr_embedding: Optional[List[float]] = None,
         pod_embedding: Optional[List[float]] = None,
-        invoice_embedding: Optional[List[float]] = None
+        invoice_embedding: Optional[List[float]] = None,
+        graph_score: float = 0.0,
+        lr_blocks: List[Dict] = None,
+        pod_blocks: List[Dict] = None,
+        invoice_blocks: List[Dict] = None
     ) -> Tuple[float, float, Dict, List[Dict]]:
         """
         Match three documents and return scores.
-        Now includes embedding-based semantic similarity (contrastive learning).
-        
         Returns: (match_score, confidence, field_matches, attention_map)
         """
         field_matches = {}
@@ -62,7 +64,6 @@ class TripletMatcher:
         total_weight = 0
         weighted_score = 0
         
-        # Calculate field-level matching scores
         for field, weight in self.field_weights.items():
             lr_val = lr_entities.get(field)
             pod_val = pod_entities.get(field)
@@ -80,38 +81,59 @@ class TripletMatcher:
                     attention_map.extend(
                         self._build_attention_regions(field, match_info, lr_blocks, pod_blocks, invoice_blocks)
                     )
-        
-        # Calculate embedding similarity (contrastive learning)
-        embedding_score = self.embedding_service.compare_document_embeddings(
+
+        embedding_similarity = self._embedding_triplet_similarity(
             lr_embedding, pod_embedding, invoice_embedding
         )
-        
-        # Add embedding similarity to total score
-        weighted_score += embedding_score * self.embedding_weight
+        contrastive_score = self.contrastive_learner.score_similarity(embedding_similarity)
+        field_matches['embedding_similarity'] = {
+            'score': embedding_similarity,
+            'matched': embedding_similarity > 0.6,
+            'values': {'lr': embedding_similarity, 'pod': embedding_similarity, 'invoice': embedding_similarity}
+        }
+        # Backward-compatible key expected by older tests.
+        field_matches['_embedding_similarity'] = field_matches['embedding_similarity']
+        weighted_score += self.embedding_weight * contrastive_score
         total_weight += self.embedding_weight
         
-        # Store embedding match info
-        field_matches['_embedding_similarity'] = {
-            'score': embedding_score,
-            'matched': embedding_score > 0.7,
-            'values': {
-                'lr': 'vector' if lr_embedding else None,
-                'pod': 'vector' if pod_embedding else None,
-                'invoice': 'vector' if invoice_embedding else None
-            }
-        }
-        
         match_score = weighted_score / total_weight if total_weight > 0 else 0
+        # Blend GAT-style graph score with field/contrastive score
+        match_score = (
+            (1.0 - settings.graph_attention_weight) * match_score
+            + settings.graph_attention_weight * graph_score
+        )
+        field_matches['graph_attention'] = {
+            'score': graph_score,
+            'matched': graph_score > 0.55,
+            'values': {'lr': graph_score, 'pod': graph_score, 'invoice': graph_score}
+        }
         
         # Confidence based on how many fields were matched
         fields_matched = sum(1 for f in field_matches.values() if f['score'] > 0.7)
         confidence = min(
             settings.confidence_base +
-            (fields_matched / (len(self.field_weights) + 1)) * settings.confidence_range,  # +1 for embedding
+            (fields_matched / (len(self.field_weights) + 1)) * settings.confidence_range,
             1.0
         )
         
         return match_score, confidence, field_matches, attention_map
+
+    def _embedding_triplet_similarity(
+        self,
+        lr_embedding: Optional[List[float]],
+        pod_embedding: Optional[List[float]],
+        invoice_embedding: Optional[List[float]],
+    ) -> float:
+        pairs = []
+        if lr_embedding and pod_embedding:
+            pairs.append(self.embedding_service.cosine_similarity(lr_embedding, pod_embedding))
+        if lr_embedding and invoice_embedding:
+            pairs.append(self.embedding_service.cosine_similarity(lr_embedding, invoice_embedding))
+        if pod_embedding and invoice_embedding:
+            pairs.append(self.embedding_service.cosine_similarity(pod_embedding, invoice_embedding))
+        if not pairs:
+            return 0.0
+        return float(sum(pairs) / len(pairs))
     
     def _compare_field(self, field: str, lr_val, pod_val, inv_val) -> Dict:
         """Compare a field across all three documents."""
@@ -233,29 +255,54 @@ class TripletMatcher:
         self, field: str, match_info: Dict,
         lr_blocks: List[Dict], pod_blocks: List[Dict], invoice_blocks: List[Dict]
     ) -> List[Dict]:
-        """Build attention regions for heatmap visualization."""
+        """Build attention regions with normalised coordinates for heatmap."""
         regions = []
         score = match_info['score']
-        
+
         for doc_type, blocks, value in [
             ('LR', lr_blocks, match_info['values'].get('lr')),
             ('POD', pod_blocks, match_info['values'].get('pod')),
             ('INVOICE', invoice_blocks, match_info['values'].get('invoice'))
         ]:
-            if blocks and value:
-                position = self._find_value_position(str(value), blocks)
-                if position:
-                    regions.append({
-                        'document_type': doc_type,
-                        'field': field,
-                        'x': position[0],
-                        'y': position[1],
-                        'width': position[2],
-                        'height': position[3],
-                        'score': score
-                    })
-        
+            if not (blocks and value):
+                continue
+
+            position = self._find_value_position(str(value), blocks)
+            if not position:
+                continue
+
+            px, py, pw, ph = position
+
+            # Compute real document bounding box from all text blocks
+            doc_w, doc_h = self._compute_doc_dimensions(blocks)
+
+            # Normalise to [0, 1] — safe even if doc_w/h are 0
+            x_norm = (px / doc_w) if doc_w > 0 else 0.0
+            y_norm = (py / doc_h) if doc_h > 0 else 0.0
+            w_norm = (pw / doc_w) if doc_w > 0 else 0.0
+            h_norm = (ph / doc_h) if doc_h > 0 else 0.0
+
+            regions.append({
+                'document_type': doc_type,
+                'field': field,
+                # Raw pixel coords (kept for debugging)
+                'x': px,
+                'y': py,
+                'width': pw,
+                'height': ph,
+                # Real document dimensions
+                'doc_width': doc_w,
+                'doc_height': doc_h,
+                # Normalised coords — use these in the frontend
+                'x_norm': round(x_norm, 4),
+                'y_norm': round(y_norm, 4),
+                'w_norm': round(max(w_norm, 0.02), 4),  # min 2% so tiny words visible
+                'h_norm': round(max(h_norm, 0.02), 4),
+                'score': score,
+            })
+
         return regions
+
     
     def _find_value_position(self, value: str, blocks: List[Dict]) -> Optional[Tuple]:
         """Find position of value in text blocks."""
@@ -264,7 +311,15 @@ class TripletMatcher:
             if value_lower in block.get('text', '').lower():
                 return (block['x'], block['y'], block['width'], block['height'])
         return None
-    
+
+    def _compute_doc_dimensions(self, blocks: List[Dict]) -> Tuple[float, float]:
+        """Compute document canvas size from the bounding box of all OCR text blocks."""
+        if not blocks:
+            return 0.0, 0.0
+        max_x = max((b['x'] + b.get('width', 0)) for b in blocks)
+        max_y = max((b['y'] + b.get('height', 0)) for b in blocks)
+        return float(max_x), float(max_y)
+
     def find_best_matches(
         self, 
         lr_docs: List[Dict], 
@@ -273,20 +328,23 @@ class TripletMatcher:
     ) -> List[MatchResult]:
         """Find best triplet matches from document pools."""
         matches = []
+        graph_scorer = GraphAttentionScorer(lr_docs + pod_docs + invoice_docs)
         
         for lr in lr_docs:
             for pod in pod_docs:
                 for inv in invoice_docs:
+                    graph_score = graph_scorer.score_triplet(lr['id'], pod['id'], inv['id'])
                     score, conf, fields, attention = self.match_triplet(
                         lr.get('entities', {}),
                         pod.get('entities', {}),
                         inv.get('entities', {}),
+                        lr.get('embedding'),
+                        pod.get('embedding'),
+                        inv.get('embedding'),
+                        graph_score,
                         lr.get('text_blocks'),
                         pod.get('text_blocks'),
-                        inv.get('text_blocks'),
-                        lr.get('embedding'),  # Pass embeddings for contrastive learning
-                        pod.get('embedding'),
-                        inv.get('embedding')
+                        inv.get('text_blocks')
                     )
                     
                     if score > settings.min_match_score:  # configurable minimum threshold
@@ -297,7 +355,12 @@ class TripletMatcher:
                             match_score=score,
                             confidence=conf,
                             field_matches=fields,
-                            attention_map=attention
+                            attention_map=attention,
+                            embedding_similarity=fields.get('embedding_similarity', {}).get('score', 0.0),
+                            contrastive_score=self.contrastive_learner.score_similarity(
+                                fields.get('embedding_similarity', {}).get('score', 0.0)
+                            ),
+                            graph_score=graph_score,
                         ))
         
         # Sort by score and return best non-overlapping matches

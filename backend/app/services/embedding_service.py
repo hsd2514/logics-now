@@ -4,8 +4,7 @@ from typing import Dict, List, Optional
 from google import genai
 from app.config import get_settings
 import numpy as np
-
-settings = get_settings()
+from app.pipeline.embedding_service import EmbeddingService as LocalEmbeddingService
 
 
 class EmbeddingService:
@@ -15,7 +14,9 @@ class EmbeddingService:
     EMBEDDING_MODEL = "models/text-embedding-004"
     
     def __init__(self):
+        settings = get_settings()
         self.client = genai.Client(api_key=settings.google_api_key) if settings.google_api_key else None
+        self._local = LocalEmbeddingService()
     
     def generate_document_embedding(self, entities: Dict) -> Optional[List[float]]:
         """
@@ -154,3 +155,13 @@ class EmbeddingService:
         
         # Return average similarity
         return sum(similarities) / len(similarities)
+
+    def embed_document(self, text: str, entities: Dict) -> List[float]:
+        """
+        Backward/forward-compatible embedding API used by newer pipeline code.
+        Falls back to deterministic local embedding when remote API is unavailable.
+        """
+        remote = self.generate_document_embedding(entities or {})
+        if remote:
+            return remote
+        return self._local.embed_document(text or "", entities or {})

@@ -23,6 +23,9 @@ backend/.env*
 ### Local data / generated
 backend/freightiq.db
 backend/uploads/
+backend/*.joblib
+backend/*_state.json
+backend/*_samples.jsonl
 sample_data/generated/
 sample_data/.venv/
 
