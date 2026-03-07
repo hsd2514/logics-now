@@ -40,7 +40,7 @@ class NLQueryParser:
 
         try:
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=query,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,
@@ -62,7 +62,7 @@ class NLQueryParser:
 
         try:
             async for chunk in await self.client.aio.models.generate_content_stream(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=query,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,
