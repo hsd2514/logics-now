@@ -1,10 +1,11 @@
 from typing import List, Optional, Tuple
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 
 from app.models.document import Document, DocumentStatus
 from app.models.triplet import Triplet, TripletStatus
 from app.models.fraud_alert import FraudAlert
+from app.models.audit_log import AuditLog
 from app.pipeline.triplet_matcher import TripletMatcher
 from app.pipeline.validator import Validator
 from app.pipeline.fraud_detector import FraudDetector
@@ -195,6 +196,14 @@ class MatchingService:
         invoice.status = DocumentStatus.MATCHED
         
         db.commit()
+        
+        # Write audit log: triplet creation
+        self._write_audit(
+            db, triplet, action="CREATED",
+            ai_text=triplet.ai_explanation or f"Triplet created with status {status}.",
+            context={"match_score": match_score, "confidence": confidence, "status": str(status)}
+        )
+        db.commit()
         return triplet
     
     def approve_triplet(self, db: Session, triplet_id: str, user_id: str, notes: str = None) -> Optional[Triplet]:
@@ -223,6 +232,15 @@ class MatchingService:
         )
         
         db.commit()
+        
+        # Write audit log: manual approval
+        self._write_audit(
+            db, triplet, action="APPROVED",
+            ai_text=triplet.ai_explanation or "Triplet manually approved.",
+            context={"reviewed_by": user_id, "notes": notes},
+            user_id=user_id
+        )
+        db.commit()
         return triplet
     
     def reject_triplet(self, db: Session, triplet_id: str, user_id: str, notes: str = None) -> Optional[Triplet]:
@@ -236,6 +254,15 @@ class MatchingService:
         triplet.reviewed_by = user_id
         triplet.review_notes = notes
         
+        db.commit()
+        
+        # Write audit log: rejection
+        self._write_audit(
+            db, triplet, action="REJECTED",
+            ai_text=f"Triplet rejected by reviewer. Notes: {notes or 'None'}.",
+            context={"reviewed_by": user_id, "notes": notes},
+            user_id=user_id
+        )
         db.commit()
         return triplet
     
@@ -269,6 +296,27 @@ class MatchingService:
         
         return triplets, stats
     
+    # ── Private helpers ──────────────────────────────────────────────────────
+
+    def _write_audit(
+        self,
+        db: Session,
+        triplet: Triplet,
+        action: str,
+        ai_text: str,
+        context: dict = None,
+        user_id: str = None
+    ) -> None:
+        """Persist a single AuditLog record for a triplet action."""
+        log = AuditLog(
+            triplet_id=triplet.id,
+            action=action,
+            ai_generated=ai_text,
+            context=context or {},
+            user_id=user_id,
+        )
+        db.add(log)
+    
     def _doc_to_dict(self, doc: Document) -> dict:
         """Convert document to dict for matcher."""
         return {
@@ -280,15 +328,34 @@ class MatchingService:
         }
     
     def _triplet_to_dict(self, triplet: Triplet) -> dict:
-        """Convert triplet to dict for fraud detection."""
+        """Convert triplet to dict for fraud detection.
+        
+        Populates entity fields from the linked Document relationships so that
+        historical duplicate, vendor-frequency, and amount-comparison checks
+        in FraudDetector have real data to work with.
+        """
         return {
             'id': triplet.id,
-            'lr_entities': {},  # Would need to join
-            'pod_entities': {},
-            'invoice_entities': {},
+            'lr_entities': (triplet.lr.entities or {}) if triplet.lr else {},
+            'pod_entities': (triplet.pod.entities or {}) if triplet.pod else {},
+            'invoice_entities': (triplet.invoice.entities or {}) if triplet.invoice else {},
             'created_at': triplet.created_at
         }
     
     def _get_recent_triplets(self, db: Session, limit: int = 100) -> List[Triplet]:
-        """Get recent triplets for comparison."""
-        return db.query(Triplet).order_by(Triplet.created_at.desc()).limit(limit).all()
+        """Get recent triplets for comparison.
+        
+        Uses joinedload to fetch all linked Documents in a single query,
+        avoiding N+1 lazy-load queries when _triplet_to_dict reads their entities.
+        """
+        return (
+            db.query(Triplet)
+            .options(
+                joinedload(Triplet.lr),
+                joinedload(Triplet.pod),
+                joinedload(Triplet.invoice),
+            )
+            .order_by(Triplet.created_at.desc())
+            .limit(limit)
+            .all()
+        )
