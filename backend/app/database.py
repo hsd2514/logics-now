@@ -30,6 +30,7 @@ def init_db():
 
 
 def _migrate_sqlite_schema() -> None:
+    """Best-effort SQLite schema patching for local development."""
     if "sqlite" not in SQLALCHEMY_DATABASE_URL:
         return
 
@@ -53,6 +54,15 @@ def _migrate_sqlite_schema() -> None:
             for column, col_type in required_audit_columns.items():
                 if column not in existing:
                     conn.execute(text(f"ALTER TABLE audit_logs ADD COLUMN {column} {col_type}"))
+
+        docs_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='documents'")
+        ).first()
+        if docs_exists:
+            doc_rows = conn.execute(text("PRAGMA table_info(documents)")).fetchall()
+            doc_existing = {row[1] for row in doc_rows}
+            if "processing_time_ms" not in doc_existing:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN processing_time_ms JSON"))
 
         triplets_exists = conn.execute(
             text("SELECT name FROM sqlite_master WHERE type='table' AND name='triplets'")

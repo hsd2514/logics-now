@@ -1,6 +1,7 @@
 import pytesseract
 from PIL import Image
 import numpy as np
+import cv2
 from typing import List, Dict, Tuple
 from dataclasses import dataclass
 

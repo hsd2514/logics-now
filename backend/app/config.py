@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     isolation_forest_min_samples: int = 10
     isolation_forest_random_state: int = 42
     isolation_forest_alert_threshold: float = 0.6  # Risk score threshold for ML alerts
+    autoencoder_alert_threshold: float = 0.65
+    autoencoder_min_samples: int = 15
+    autoencoder_max_iter: int = 400
     fraud_high_risk_alert_threshold: float = 0.7  # risk_score above this → force REVIEW + counted as flagged
     contract_rate_tolerance: float = 0.05
     contract_mismatch_fraud_threshold: float = 0.12
@@ -61,6 +64,14 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash"
     gemini_embedding_model: str = "models/text-embedding-004"
     chat_context_chars: int = 3000
+
+    # Embedding / contrastive / active learning
+    embedding_dim: int = 128
+    contrastive_positive_prior: float = 0.78
+    contrastive_negative_prior: float = 0.42
+    graph_attention_weight: float = 0.15
+    active_learning_weight: float = 0.25
+    active_learning_min_samples: int = 8
 
     # Vendor risk thresholds
     vendor_min_invoices_for_risk: int = 5

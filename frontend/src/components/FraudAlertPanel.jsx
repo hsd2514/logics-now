@@ -63,10 +63,10 @@ export function FraudAlertPanel() {
 
   const getAlertTypeConfig = (type) => {
     const configs = {
-      DUPLICATE: { icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50' },
-      AMOUNT_ANOMALY: { icon: TrendingUp, color: 'text-orange-500', bg: 'bg-orange-50' },
-      VENDOR_ANOMALY: { icon: ShieldAlert, color: 'text-yellow-500', bg: 'bg-yellow-50' },
-      PREDICTED: { icon: TrendingUp, color: 'text-purple-500', bg: 'bg-purple-50' },
+      DUPLICATE: { icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100/50 dark:bg-red-950/20' },
+      AMOUNT_ANOMALY: { icon: TrendingUp, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100/50 dark:bg-orange-950/20' },
+      VENDOR_ANOMALY: { icon: ShieldAlert, color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100/50 dark:bg-yellow-950/20' },
+      PREDICTED: { icon: TrendingUp, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100/50 dark:bg-purple-950/20' },
     }
     return configs[type] || configs.AMOUNT_ANOMALY
   }
@@ -78,16 +78,36 @@ export function FraudAlertPanel() {
     return <Badge variant="outline">Low</Badge>
   }
 
+  const handleExport = async (format) => {
+    try {
+      const res = await api.exportFraudAlerts(format)
+      const blobUrl = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = `fraud_alerts.${format}`
+      a.click()
+      URL.revokeObjectURL(blobUrl)
+    } catch (err) {
+      console.error('Failed to export fraud alerts:', err)
+    }
+  }
+
   return (
     <Card className="h-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ShieldAlert className="h-5 w-5 text-red-500" />
-          Fraud Alerts
-          {alerts.length > 0 && (
-            <Badge variant="destructive" className="ml-auto">{alerts.length}</Badge>
-          )}
-        </CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-red-500" />
+            Fraud Alerts
+            {alerts.length > 0 && (
+              <Badge variant="destructive" className="ml-auto">{alerts.length}</Badge>
+            )}
+          </CardTitle>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>Export CSV</Button>
+            <Button variant="outline" size="sm" onClick={() => handleExport('pdf')}>Export PDF</Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[400px] pr-4">
@@ -103,7 +123,7 @@ export function FraudAlertPanel() {
               {alerts.map(alert => {
                 const config = getAlertTypeConfig(alert.alert_type)
                 const Icon = config.icon
-                
+
                 return (
                   <div key={alert.id} className={`p-4 rounded-lg ${config.bg}`}>
                     <div className="flex items-start gap-3">
@@ -120,16 +140,16 @@ export function FraudAlertPanel() {
                           Triplet: {alert.triplet_id.slice(0, 8)}
                         </div>
                         <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => handleDismiss(alert.id)}
                           >
                             <XCircle className="h-3 w-3 mr-1" />
                             Dismiss
                           </Button>
-                          <Button 
-                            variant="destructive" 
+                          <Button
+                            variant="destructive"
                             size="sm"
                             onClick={() => handleConfirm(alert.id)}
                           >
@@ -150,7 +170,7 @@ export function FraudAlertPanel() {
                     Predictive Alerts (AI)
                   </div>
                   {predictiveAlerts.map((alert, idx) => (
-                    <div key={idx} className="p-4 rounded-lg bg-purple-50">
+                    <div key={idx} className="p-4 rounded-lg bg-purple-100/50 dark:bg-purple-900/20">
                       <div className="flex items-start gap-3">
                         <TrendingUp className="h-5 w-5 text-purple-500 mt-0.5" />
                         <div className="flex-1">
@@ -161,7 +181,7 @@ export function FraudAlertPanel() {
                           <p className="text-sm text-muted-foreground">
                             {alert.reasoning}
                           </p>
-                          <p className="text-xs text-purple-600 mt-2">
+                          <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
                             {alert.recommended_action}
                           </p>
                         </div>

@@ -27,7 +27,7 @@ export function BatchUploadProgress({ onClose, onComplete }) {
 
     websocket.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      
+
       switch (data.type) {
         case 'batch_start':
           setBatchProgress({
@@ -37,7 +37,7 @@ export function BatchUploadProgress({ onClose, onComplete }) {
             docType: data.doc_type
           });
           break;
-          
+
         case 'batch_progress':
           setBatchProgress(prev => ({
             ...prev,
@@ -46,7 +46,7 @@ export function BatchUploadProgress({ onClose, onComplete }) {
             progress: data.progress
           }));
           break;
-          
+
         case 'processing_update':
           // Update individual file progress
           setFileStatuses(prev => ({
@@ -58,7 +58,7 @@ export function BatchUploadProgress({ onClose, onComplete }) {
             }
           }));
           break;
-          
+
         case 'batch_file_complete':
           setFileStatuses(prev => ({
             ...prev,
@@ -71,7 +71,7 @@ export function BatchUploadProgress({ onClose, onComplete }) {
             }
           }));
           break;
-          
+
         case 'batch_file_error':
           setFileStatuses(prev => ({
             ...prev,
@@ -84,7 +84,7 @@ export function BatchUploadProgress({ onClose, onComplete }) {
             }
           }));
           break;
-          
+
         case 'batch_complete':
           setBatchProgress(prev => ({
             ...prev,
@@ -123,7 +123,7 @@ export function BatchUploadProgress({ onClose, onComplete }) {
 
     setUploading(true);
     setFileStatuses({});
-    
+
     const formData = new FormData();
     files.forEach(file => {
       formData.append('files', file);
@@ -262,7 +262,7 @@ export function BatchUploadProgress({ onClose, onComplete }) {
             )}
 
             {batchProgress.complete && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="bg-green-100/50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-6 h-6 text-green-500" />
                   <div>

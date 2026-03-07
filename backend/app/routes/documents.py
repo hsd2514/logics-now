@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
+import zipfile
+from io import BytesIO
 
 from app.database import get_db
 from app.services.document_service import DocumentService
@@ -8,6 +10,17 @@ from app.schemas.document import DocumentResponse, DocumentListResponse, Documen
 
 router = APIRouter()
 document_service = DocumentService()
+
+
+def _infer_doc_type(name: str) -> Optional[str]:
+    lower = name.lower()
+    if "invoice" in lower or "inv" in lower:
+        return "INVOICE"
+    if "pod" in lower or "delivery" in lower:
+        return "POD"
+    if lower.startswith("lr") or "lorry" in lower or "consignment" in lower:
+        return "LR"
+    return None
 
 @router.post("/upload", response_model=DocumentUploadResponse)
 async def upload_document(
@@ -106,6 +119,55 @@ async def upload_batch(
         'failed': total_files - successful
     })
     
+    return results
+
+
+@router.post("/batch-upload", response_model=List[DocumentUploadResponse])
+async def batch_upload_zip(
+    archive: UploadFile = File(..., description="ZIP containing LR/POD/INVOICE files"),
+    doc_type: Optional[str] = Query(None, description="Optional force type for all files"),
+    db: Session = Depends(get_db),
+):
+    """Upload a zip archive of documents and process all supported files."""
+    if not archive.filename.lower().endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Only .zip archives are supported")
+
+    data = await archive.read()
+    zf = zipfile.ZipFile(BytesIO(data))
+    results: List[DocumentUploadResponse] = []
+
+    supported = (".html", ".htm", ".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp")
+    members = [m for m in zf.namelist() if not m.endswith("/") and m.lower().endswith(supported)]
+    if not members:
+        raise HTTPException(status_code=400, detail="No supported documents found in archive")
+
+    for member in members:
+        payload = zf.read(member)
+        inferred = (doc_type or _infer_doc_type(member) or "").upper()
+        if inferred not in ["LR", "POD", "INVOICE"]:
+            results.append(
+                DocumentUploadResponse(
+                    id="",
+                    message=f"Skipped {member}: could not infer document type",
+                    status="ERROR",
+                )
+            )
+            continue
+
+        doc = await document_service.create_and_process_from_bytes(
+            db=db,
+            filename=member.split("/")[-1],
+            content=payload,
+            doc_type=inferred,
+        )
+        results.append(
+            DocumentUploadResponse(
+                id=doc.id,
+                message=f"Processed {member}",
+                status=doc.status,
+            )
+        )
+
     return results
 
 @router.get("", response_model=DocumentListResponse)

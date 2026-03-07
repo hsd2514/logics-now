@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
@@ -10,9 +11,45 @@ from app.models.fraud_alert import FraudAlert, AlertStatus
 from app.models.audit_log import AuditLog
 from app.schemas.fraud import FraudAlertResponse, FraudAlertListResponse, PredictiveAlertResponse
 from app.ai.vendor_patterns import VendorPatternLearner
+from app.utils.export_utils import to_csv_bytes, text_to_pdf_bytes
 
 router = APIRouter()
 vendor_learner = VendorPatternLearner()
+
+
+@router.get("/export")
+def export_alerts(
+    format: str = Query("csv", pattern="^(csv|pdf)$"),
+    db: Session = Depends(get_db),
+):
+    alerts = db.query(FraudAlert).order_by(FraudAlert.created_at.desc()).all()
+    rows = [
+        {
+            "id": a.id,
+            "triplet_id": a.triplet_id,
+            "alert_type": a.alert_type,
+            "risk_score": round(float(a.risk_score or 0), 4),
+            "status": a.status,
+            "created_at": a.created_at.isoformat() if a.created_at else "",
+        }
+        for a in alerts
+    ]
+
+    if format == "csv":
+        data = to_csv_bytes(rows, fieldnames=["id", "triplet_id", "alert_type", "risk_score", "status", "created_at"])
+        return Response(
+            content=data,
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="fraud_alerts_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'},
+        )
+
+    lines = [f"{r['id']} | {r['alert_type']} | risk={r['risk_score']} | {r['status']}" for r in rows]
+    pdf = text_to_pdf_bytes("FreightIQ Fraud Alerts Export", lines)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="fraud_alerts_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf"'},
+    )
 
 @router.get("/alerts", response_model=FraudAlertListResponse)
 def list_alerts(
@@ -85,10 +122,10 @@ def dismiss_alert(
         action="FRAUD_DISMISSED",
         ai_generated=(
             f"Fraud alert of type '{alert.alert_type}' (risk {alert.risk_score * 100:.0f}%) "
-            f"was dismissed by reviewer. Notes: {notes or 'None'}."
+            f"was dismissed by reviewer. Notes: {action.notes or 'None'}."
         ),
         context={"alert_id": alert_id, "alert_type": alert.alert_type, "risk_score": alert.risk_score},
-        user_id=user_id,
+        user_id=current_user,
     )
     db.add(audit)
     db.commit()
@@ -121,10 +158,10 @@ def confirm_alert(
         action="FRAUD_CONFIRMED",
         ai_generated=(
             f"Fraud alert of type '{alert.alert_type}' (risk {alert.risk_score * 100:.0f}%) "
-            f"was confirmed as fraud by reviewer. Notes: {notes or 'None'}."
+            f"was confirmed as fraud by reviewer. Notes: {action.notes or 'None'}."
         ),
         context={"alert_id": alert_id, "alert_type": alert.alert_type, "risk_score": alert.risk_score},
-        user_id=user_id,
+        user_id=current_user,
     )
     db.add(audit)
     db.commit()
