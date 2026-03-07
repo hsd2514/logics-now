@@ -24,6 +24,7 @@ backend/.env*
 backend/freightiq.db
 backend/uploads/
 sample_data/generated/
+sample_data/.venv/
 
 ### IDE / OS junk
 .vscode/
