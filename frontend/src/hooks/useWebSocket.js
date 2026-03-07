@@ -6,7 +6,7 @@ const getWsUrl = () => {
   // If we are served from Vite on port 5173, point to backend 8000
   // Otherwise use the same host (e.g. for production deployments)
   const host = window.location.port === '5173' || window.location.port === '3000' 
-    ? 'localhost:8000' 
+    ? `${window.location.hostname}:8000` 
     : window.location.host
   return `${protocol}//${host}/ws/processing`
 }

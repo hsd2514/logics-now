@@ -46,17 +46,27 @@ def get_alert(alert_id: str, db: Session = Depends(get_db)):
     
     return FraudAlertResponse.model_validate(alert)
 
+from fastapi import Request
+
+# Simulated auth dependency
+def get_current_user(request: Request):
+    # In a real app this would decode a token. Here we simulate an authenticated user.
+    return getattr(request.state, "user", "system_user")
+
 class ActionRequest(BaseModel):
-    user_id: Optional[str] = None
     notes: Optional[str] = None
 
 @router.post("/alerts/{alert_id}/dismiss")
 def dismiss_alert(
     alert_id: str,
     action: ActionRequest,
+    current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Dismiss a fraud alert."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+        
     alert = db.query(FraudAlert).filter(FraudAlert.id == alert_id).first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -64,7 +74,7 @@ def dismiss_alert(
     from datetime import datetime
     alert.status = AlertStatus.DISMISSED
     alert.resolved_at = datetime.now()
-    alert.resolved_by = action.user_id
+    alert.resolved_by = current_user
     alert.resolution_notes = action.notes
     
     db.commit()
@@ -75,9 +85,13 @@ def dismiss_alert(
 def confirm_alert(
     alert_id: str,
     action: ActionRequest,
+    current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Confirm a fraud alert as legitimate fraud."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+        
     alert = db.query(FraudAlert).filter(FraudAlert.id == alert_id).first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -85,7 +99,7 @@ def confirm_alert(
     from datetime import datetime
     alert.status = AlertStatus.CONFIRMED
     alert.resolved_at = datetime.now()
-    alert.resolved_by = action.user_id
+    alert.resolved_by = current_user
     alert.resolution_notes = action.notes
     
     db.commit()

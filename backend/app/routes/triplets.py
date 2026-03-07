@@ -9,10 +9,23 @@ from app.schemas.triplet import TripletResponse, TripletListResponse, TripletRev
 router = APIRouter()
 matching_service = MatchingService()
 
+from app.services.websocket_manager import ws_manager
+
 @router.post("/match")
-def run_matching(db: Session = Depends(get_db)):
+async def run_matching(db: Session = Depends(get_db)):
     """Run matching algorithm on unmatched documents."""
-    triplets = matching_service.match_documents(db)
+    triplets, events = matching_service.match_documents(db)
+    
+    # Broadcast all collected events
+    for event in events:
+        if event['type'] == 'fraud_alert':
+            await ws_manager.send_fraud_alert(
+                event['id'], event['risk_score'], event['alert_type']
+            )
+        elif event['type'] == 'match_found':
+            await ws_manager.send_match_found(
+                event['id'], event['match_score']
+            )
     
     return {
         "message": f"Created {len(triplets)} triplet matches",

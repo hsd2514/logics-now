@@ -94,42 +94,50 @@ class DocumentService:
         document.status = DocumentStatus.PROCESSING
         db.commit()
         
-        asyncio.create_task(ws_manager.send_processing_update(
+        await ws_manager.send_processing_update(
             document.id, 'PREPROCESSING', 10, 'Starting preprocessing'
-        ))
+        )
         
         # Stage 1: Preprocessing
-        processed_image, quality_score = self.preprocessor.process(document.file_path) # Kept original return values
+        processed_image, quality_score = await asyncio.to_thread(
+            self.preprocessor.process, document.file_path
+        ) # Kept original return values
         
-        asyncio.create_task(ws_manager.send_processing_update(
+        await ws_manager.send_processing_update(
             document.id, 'OCR', 30, 'Running OCR extraction'
-        ))
+        )
 
         # Stage 2: OCR
-        ocr_text, text_blocks, ocr_confidence = self.ocr_engine.extract(processed_image) # Kept original return values
+        ocr_text, text_blocks, ocr_confidence = await asyncio.to_thread(
+            self.ocr_engine.extract, processed_image
+        ) # Kept original return values
         
-        asyncio.create_task(ws_manager.send_processing_update(
+        await ws_manager.send_processing_update(
             document.id, 'NER', 70, 'Extracting entities'
-        ))
+        )
 
         # Stage 3: Entity Extraction
-        entities, ner_confidence = self.entity_extractor.extract_for_document_type(
+        entities, ner_confidence = await asyncio.to_thread(
+            self.entity_extractor.extract_for_document_type,
             ocr_text, document.type
         )
         
-        asyncio.create_task(ws_manager.send_processing_update(
-            document.id, 'DONE', 100, 'Processing complete'
-        ))
-
         # Update document
 
         document.ocr_text = ocr_text
         document.ocr_confidence = ocr_confidence
-        document.text_blocks = self.ocr_engine.blocks_to_dict(text_blocks)
+        document.text_blocks = await asyncio.to_thread(
+            self.ocr_engine.blocks_to_dict, text_blocks
+        )
         document.entities = entities
         document.status = DocumentStatus.PROCESSED
         
         db.commit()
+
+        await ws_manager.send_processing_update(
+            document.id, 'DONE', 100, 'Processing complete'
+        )
+        
         return document
     
     async def process_html_document(self, db: Session, document: Document) -> Document:
@@ -138,28 +146,28 @@ class DocumentService:
         with open(document.file_path, 'r', encoding='utf-8') as f:
             html_content = f.read()
         
-        asyncio.create_task(ws_manager.send_processing_update(
+        await ws_manager.send_processing_update(
             document.id, 'EXTRACTION', 30, 'Parsing HTML'
-        ))
+        )
 
         # Extract text from HTML
-        parser = HTMLTextExtractor()
-        parser.feed(html_content)
-        extracted_text = parser.get_text()
+        def extract_html(html):
+            parser = HTMLTextExtractor()
+            parser.feed(html)
+            return parser.get_text()
+
+        extracted_text = await asyncio.to_thread(extract_html, html_content)
         
-        asyncio.create_task(ws_manager.send_processing_update(
+        await ws_manager.send_processing_update(
             document.id, 'NER', 70, 'Extracting entities'
-        ))
+        )
 
         # Stage 3: Entity Extraction
-        entities, ner_confidence = self.entity_extractor.extract_for_document_type(
+        entities, ner_confidence = await asyncio.to_thread(
+            self.entity_extractor.extract_for_document_type,
             extracted_text, document.type
         )
         
-        asyncio.create_task(ws_manager.send_processing_update(
-            document.id, 'DONE', 100, 'Processing complete'
-        ))
-
         # Update document - HTML is perfect quality
         document.ocr_text = extracted_text
         document.ocr_confidence = 1.0  # Perfect extraction from HTML
@@ -168,6 +176,11 @@ class DocumentService:
         document.status = DocumentStatus.PROCESSED
         
         db.commit()
+
+        await ws_manager.send_processing_update(
+            document.id, 'DONE', 100, 'Processing complete'
+        )
+        
         return document
     
     def get_document(self, db: Session, doc_id: str) -> Optional[Document]:
