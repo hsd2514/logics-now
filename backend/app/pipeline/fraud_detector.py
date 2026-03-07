@@ -122,24 +122,28 @@ class FraudDetector:
         
         # Check against vendor profile
         if vendor_profile:
-            avg = vendor_profile.get('avg_amount', 0)
-            std = vendor_profile.get('std_deviation', 0)
+            # Handle None values from database
+            avg = vendor_profile.get('avg_amount') or 0.0
+            std = vendor_profile.get('std_deviation') or 0.0
             
             if avg > 0 and std > 0:
-                z_score = abs(inv_amt - avg) / std
-                
-                if z_score > settings.fraud_vendor_zscore_threshold:
-                    return FraudAlert(
-                        alert_type="AMOUNT_ANOMALY",
-                        risk_score=min(0.5 + z_score * 0.1, settings.fraud_lr_invoice_max_risk),
-                        details={
-                            'invoice_amount': inv_amt,
-                            'vendor_avg': avg,
-                            'vendor_std': std,
-                            'z_score': z_score
-                        },
-                        reasoning=f"Invoice amount ({inv_amt}) is {z_score:.1f} standard deviations from vendor average ({avg:.0f}). This is statistically unusual."
-                    )
+                try:
+                    z_score = abs(inv_amt - avg) / std
+                    
+                    if z_score > settings.fraud_vendor_zscore_threshold:
+                        return FraudAlert(
+                            alert_type="AMOUNT_ANOMALY",
+                            risk_score=min(0.5 + z_score * 0.1, settings.fraud_lr_invoice_max_risk),
+                            details={
+                                'invoice_amount': inv_amt,
+                                'vendor_avg': avg,
+                                'vendor_std': std,
+                                'z_score': z_score
+                            },
+                            reasoning=f"Invoice amount ({inv_amt}) is {z_score:.1f} standard deviations from vendor average ({avg:.0f}). This is statistically unusual."
+                        )
+                except (TypeError, ZeroDivisionError):
+                    pass
         
         # Check invoice vs LR variance
         if lr_amt > 0:
@@ -166,7 +170,8 @@ class FraudDetector:
             return None
         
         vendor_name = triplet.get('invoice_entities', {}).get('party_name', '')
-        avg_freq = vendor_profile.get('avg_frequency', 0)
+        # Handle None values from database
+        avg_freq = vendor_profile.get('avg_frequency') or 0.0
         
         if not vendor_name or avg_freq == 0:
             return None
@@ -207,12 +212,13 @@ class FraudDetector:
         
         invoice_entities = triplet.get('invoice_entities', {})
         
-        # Check route pattern
+        # Check route pattern - Only alert if we have a baseline (min 3 invoices)
         origin = invoice_entities.get('origin', '').lower()
         dest = invoice_entities.get('destination', '').lower()
         known_routes = vendor_profile.get('route_patterns', [])
+        total_invoices = vendor_profile.get('total_invoices', 0)
         
-        if origin and dest and known_routes:
+        if origin and dest and known_routes and total_invoices >= 3:
             route = f"{origin}-{dest}"
             if route not in [r.lower() for r in known_routes]:
                 alerts_reasons.append(f"New route {origin}->{dest} not in vendor's usual patterns")
@@ -229,7 +235,8 @@ class FraudDetector:
             pass
         
         # Check historical fraud rate
-        fraud_rate = vendor_profile.get('historical_fraud_rate', 0)
+        # Handle None values from database
+        fraud_rate = vendor_profile.get('historical_fraud_rate') or 0.0
         if fraud_rate > settings.fraud_high_fraud_rate_threshold:
             alerts_reasons.append(f"Vendor has elevated fraud history ({fraud_rate * 100:.1f}%)")
             risk_factors.append(fraud_rate)

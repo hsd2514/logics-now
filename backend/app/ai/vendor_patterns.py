@@ -35,27 +35,30 @@ class VendorPatternLearner:
         # Update statistics
         amount = float(invoice_data.get('amount', 0))
         
-        if profile.total_invoices == 0:
+        # Guard: Ensure we have numeric values from DB
+        current_total = profile.total_invoices or 0
+        current_avg = profile.avg_amount
+        
+        if current_total == 0 or current_avg is None:
             profile.avg_amount = amount
-            profile.std_deviation = 0
+            profile.std_deviation = 0.0
             profile.min_amount = amount
             profile.max_amount = amount
         else:
-            # Incremental mean and std calculation
-            old_mean = profile.avg_amount
-            n = profile.total_invoices
+            # Incremental mean and std calculation (Welford's algorithm)
+            old_mean = float(current_avg)
+            n = float(current_total)
             new_mean = old_mean + (amount - old_mean) / (n + 1)
-            
-            # Welford's algorithm for variance
-            old_var = profile.std_deviation ** 2 if profile.std_deviation else 0
+
+            old_var = float(profile.std_deviation ** 2) if profile.std_deviation else 0.0
             new_var = old_var + ((amount - old_mean) * (amount - new_mean) - old_var) / (n + 1)
-            
-            profile.avg_amount = new_mean
-            profile.std_deviation = np.sqrt(new_var) if new_var > 0 else 0
-            profile.min_amount = min(profile.min_amount or amount, amount)
-            profile.max_amount = max(profile.max_amount or amount, amount)
+
+            profile.avg_amount    = new_mean
+            profile.std_deviation = np.sqrt(new_var) if new_var > 0 else 0.0
+            profile.min_amount    = min(profile.min_amount if profile.min_amount is not None else amount, amount)
+            profile.max_amount    = max(profile.max_amount if profile.max_amount is not None else amount, amount)
         
-        profile.total_invoices += 1
+        profile.total_invoices = current_total + 1
         
         # Update route patterns
         if route:
@@ -95,8 +98,11 @@ class VendorPatternLearner:
         
         # Amount deviation
         amount = float(new_invoice.get('amount', 0))
-        if profile.std_deviation and profile.std_deviation > 0:
-            z_score = abs(amount - profile.avg_amount) / profile.std_deviation
+        avg_amt = profile.avg_amount or 0.0
+        std_dev = profile.std_deviation or 0.0
+        
+        if std_dev > 0:
+            z_score = abs(amount - avg_amt) / std_dev
             if z_score > 3:
                 risk_factors.append(min(z_score * 0.1, 0.5))
         
@@ -109,8 +115,9 @@ class VendorPatternLearner:
                 risk_factors.append(0.3)
         
         # Historical fraud rate
-        if profile.historical_fraud_rate > 0.05:
-            risk_factors.append(profile.historical_fraud_rate)
+        fraud_rate = profile.historical_fraud_rate or 0.0
+        if fraud_rate > 0.05:
+            risk_factors.append(fraud_rate)
         
         return max(risk_factors) if risk_factors else 0.0
     
@@ -140,15 +147,19 @@ class VendorPatternLearner:
         """Generate human-readable risk reasoning."""
         reasons = []
         
-        if profile.historical_fraud_rate > settings.vendor_high_fraud_rate_for_reason:
-            reasons.append(f"High historical fraud rate ({profile.historical_fraud_rate * 100:.1f}%)")
+        fraud_rate = profile.historical_fraud_rate or 0.0
+        if fraud_rate > settings.vendor_high_fraud_rate_for_reason:
+            reasons.append(f"High historical fraud rate ({fraud_rate * 100:.1f}%)")
         
-        if profile.std_deviation and profile.avg_amount:
-            cv = profile.std_deviation / profile.avg_amount
+        avg_amt = profile.avg_amount or 0.0
+        std_dev = profile.std_deviation or 0.0
+        if std_dev and avg_amt:
+            cv = std_dev / avg_amt
             if cv > settings.vendor_high_cv_threshold:
                 reasons.append(f"High amount variability (CV: {cv:.2f})")
         
-        if profile.avg_frequency > settings.vendor_high_frequency_threshold:
-            reasons.append(f"High invoice frequency ({profile.avg_frequency:.0f}/month)")
+        avg_freq = profile.avg_frequency or 0.0
+        if avg_freq > settings.vendor_high_frequency_threshold:
+            reasons.append(f"High invoice frequency ({avg_freq:.0f}/month)")
         
         return "; ".join(reasons) if reasons else "Elevated risk based on pattern analysis"

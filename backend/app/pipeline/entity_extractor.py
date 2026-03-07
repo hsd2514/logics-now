@@ -16,44 +16,47 @@ class EntityExtractor:
     def __init__(self):
         self.patterns = {
             'shipment_id': [
-                # Require at least one digit in the captured ID so we don't grab labels like "Number" or "Invoice"
-                r'(?:LR|POD|INV|INVOICE|SHIPMENT)[\s#:.-]*([A-Z0-9]*\d[A-Z0-9]{4,14})',
-                r'(?:Consignment|CN|Docket)[\s#:.-]*([A-Z0-9]*\d[A-Z0-9]{4,14})',
-                r'(?:AWB|Airway\s*Bill)[\s#:.-]*([A-Z0-9]*\d[A-Z0-9]{6,14})',
+                # Allow intermediate words like 'Number', 'No', 'Ref', 'ID' between label and value
+                r'\b(?:LR|POD|INV|INVOICE|SHIPMENT)\b(?:\s+(?:No|Number|Ref|ID|#))?[\s:.-]*([A-Z0-9]*\d[A-Z0-9]{4,14})',
+                r'\b(?:Consignment|CN|Docket)\b(?:\s+(?:No|Number|Ref|ID|#))?[\s:.-]*([A-Z0-9]*\d[A-Z0-9]{4,14})',
+                r'\b(?:AWB|Airway\s*Bill)\b(?:\s+(?:No|Number|Ref|ID|#))?[\s:.-]*([A-Z0-9]*\d[A-Z0-9]{6,14})',
             ],
             'amount': [
-                r'(?:Total|Grand\s*Total|Amount|Net\s*Amount|Freight)[\s:₹Rs.]*([0-9,]+\.?[0-9]*)',
-                r'₹\s*([0-9,]+\.?[0-9]*)',
-                r'Rs\.?\s*([0-9,]+\.?[0-9]*)',
-                r'INR\s*([0-9,]+\.?[0-9]*)',
+                # Word boundaries and prioritized labels
+                r'\b(?:Total\s*Amount|Net\s*Amount|Met\s*Amount|Grand\s*Total|Amount\s*Acknowledged|Amount|Basic\s*Freight|Freight)\b[\s:₹Rs,.]*([0-9,]+\.[0-9]+|[0-9,]+)',
+                r'₹\s*([0-9,]+\.[0-9]+|[0-9,]+)',
+                r'Rs\.?\s*([0-9,]+\.[0-9]+|[0-9,]+)',
+                r'INR\s*([0-9,]+\.[0-9]+|[0-9,]+)',
             ],
             'date': [
                 r'(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})',
                 r'(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4})',
-                r'(?:Date|Dated)[\s:]*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})',
+                r'\b(?:Date|Dated)\b[\s:]*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})',
             ],
             'vehicle_number': [
-                r'([A-Z]{2}[\s-]?\d{1,2}[\s-]?[A-Z]{1,3}[\s-]?\d{4})',
-                r'(?:Vehicle|Truck|Lorry)[\s#:.-]*([A-Z0-9\s-]{8,12})',
+                r'\b([A-Z]{2}[\s-]?\d{1,2}[\s-]?[A-Z]{1,3}[\s-]?\d{4})\b',
+                r'\b(?:Vehicle|Truck|Lorry)\b[\s#:.-]*([A-Z0-9\s-]{8,12})',
             ],
             'gst_number': [
-                r'(\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1})',
-                r'(?:GST|GSTIN)[\s#:.-]*(\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1})',
+                r'\b(\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1})\b',
+                r'\b(?:GST|GSTIN)\b[\s#:.-]*(\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1})',
             ],
             'party_name': [
-                r'(?:Consignor|Shipper|From)[\s:]*([A-Za-z\s&.]+?)(?:\n|,|$)',
-                r'(?:Consignee|Receiver|To)[\s:]*([A-Za-z\s&.]+?)(?:\n|,|$)',
-                r'(?:Bill\s*To|Billed\s*To)[\s:]*([A-Za-z\s&.]+?)(?:\n|,|$)',
+                r'\b(?:Consignor|Shipper|From)\b[\s:]*([A-Za-z\s&.]+?)(?=\s*(?:Consignee|Receiver|To|Date|Amount|LR|INV|Shipment)|[.,\n]|$)',
+                r'\b(?:Consignee|Receiver|To)\b[\s:]*([A-Za-z\s&.]+?)(?=\s*(?:Consignor|Shipper|From|Date|Amount|LR|INV|Shipment)|[.,\n]|$)',
+                r'\b(?:Bill\s*To|Billed\s*To)\b[\s:]*([A-Za-z\s&.]+?)(?=\s*(?:Consignor|Date|Amount|GST)|[.,\n]|$)',
             ],
             'weight': [
-                r'(?:Weight|Wt|Gross)[\s:]*([0-9,]+\.?[0-9]*)\s*(?:kg|KG|Kg|MT|mt)',
+                r'\b(?:Weight|Wt|Gross)\b[\s:]*([0-9,]+\.?[0-9]*)\s*(?:kg|KG|Kg|MT|mt)',
                 r'([0-9,]+\.?[0-9]*)\s*(?:kg|KG|Kg|MT|mt)',
             ],
             'origin': [
-                r'(?:From|Origin|Pickup)[\s:]*([A-Za-z\s]+?)(?:\n|,|to|$)',
+                # Exclude "days from" or similar prepositions; handle "From." with dot
+                r'(?<!days\s)(?<!Validity\s)\b(?:From|Origin|Pickup)\b[\s:.]*([A-Za-z\s]{3,30}?)(?=\s*(?:To|Destination|Delivery|Date|Amount|LR|INV)|[.,\n]|$)',
             ],
             'destination': [
-                r'(?:To|Destination|Delivery)[\s:]*([A-Za-z\s]+?)(?:\n|,|$)',
+                # Exclude "Bill To", "Ship To", "Sold To" labels
+                r'(?<!Bill\s)(?<!Billed\s)(?<!Ship\s)(?<!Sold\s)\b(?:To|Destination|Delivery)\b[\s:.]*([A-Za-z][A-Za-z\s]{2,30}?)(?=\s*(?:From|Origin|Pickup|Date|Amount|LR|INV)|[.,\n]|\s+[A-Z]{3,}|$)',
             ],
         }
     

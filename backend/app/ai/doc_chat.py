@@ -47,8 +47,8 @@ Extracted Entities:
 """
         # Seed with document context as first user/model exchange
         contents = [
-            types.Content(role="user",  parts=[types.Part.from_text(f"Here is the document context:\n{context}")]),
-            types.Content(role="model", parts=[types.Part.from_text("I have reviewed the document. How can I help you?")]),
+            types.Content(role="user",  parts=[types.Part.from_text(text=f"Here is the document context:\n{context}")]),
+            types.Content(role="model", parts=[types.Part.from_text(text="I have reviewed the document. How can I help you?")]),
         ]
 
         # Append prior chat history (last 3 exchanges = 6 messages)
@@ -56,15 +56,15 @@ Extracted Entities:
             for msg in chat_history[-6:]:
                 role = "model" if msg.get("role") == "assistant" else "user"
                 contents.append(
-                    types.Content(role=role, parts=[types.Part.from_text(msg.get("content", ""))])
+                    types.Content(role=role, parts=[types.Part.from_text(text=msg.get("content", ""))])
                 )
 
         # Current user message
-        contents.append(types.Content(role="user", parts=[types.Part.from_text(user_message)]))
+        contents.append(types.Content(role="user", parts=[types.Part.from_text(text=user_message)]))
 
         try:
             async for chunk in await self.client.aio.models.generate_content_stream(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,
@@ -94,7 +94,7 @@ Extracted Entities:
 """
         try:
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 contents=f"Document:\n{context}\n\nQuestion: {user_message}",
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,

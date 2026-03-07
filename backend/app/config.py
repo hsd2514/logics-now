@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     confidence_threshold: float = 0.85  # below this => low confidence
     auto_approve_threshold: float = 0.90  # above this => auto-approve
     min_match_score: float = 0.5  # minimum raw match score to consider a triplet
+    
+    # Missing settings for TripletMatcher
+    date_valid_score: float = 1.0
+    date_invalid_score: float = 0.2
 
     # Confidence aggregation weights
     match_weight: float = 0.35
