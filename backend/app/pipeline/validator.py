@@ -2,6 +2,10 @@ from typing import Dict, List, Tuple
 from dataclasses import dataclass
 from datetime import datetime
 
+from app.config import get_settings
+
+settings = get_settings()
+
 @dataclass
 class ValidationResult:
     rule: str
@@ -21,7 +25,8 @@ class Validator:
         self, 
         lr_entities: Dict, 
         pod_entities: Dict, 
-        invoice_entities: Dict
+        invoice_entities: Dict,
+        contract_rate: Dict | None = None,
     ) -> Tuple[List[ValidationResult], float]:
         """
         Run all validation rules on a triplet.
@@ -43,6 +48,12 @@ class Validator:
         
         # Rule 5: Route consistency
         results.append(self._validate_route(lr_entities, pod_entities))
+
+        # Rule 6: Partial/split delivery consistency
+        results.append(self._validate_weight_consistency(lr_entities, pod_entities, invoice_entities))
+
+        # Rule 7: Contract/rate mismatch check
+        results.append(self._validate_contract_rate(invoice_entities, contract_rate))
         
         # Calculate pass score
         passed = sum(1 for r in results if r.passed)
@@ -271,6 +282,135 @@ class Validator:
                 actual=f"POD: {pod_origin}->{pod_dest}",
                 message="Route mismatch between LR and POD"
             )
+
+    def _validate_weight_consistency(self, lr: Dict, pod: Dict, inv: Dict) -> ValidationResult:
+        """Validate partial/split delivery by comparing LR shipped weight vs POD delivered weight."""
+        try:
+            lr_weight = float(lr.get("weight", 0) or 0)
+            pod_weight = float(pod.get("weight", 0) or 0)
+        except (TypeError, ValueError):
+            return ValidationResult(
+                rule="WEIGHT_CONSISTENCY",
+                passed=False,
+                expected="Valid numeric weights for LR and POD",
+                actual=f"LR={lr.get('weight')}, POD={pod.get('weight')}",
+                message="Could not parse weight values",
+            )
+
+        if lr_weight <= 0 or pod_weight <= 0:
+            return ValidationResult(
+                rule="WEIGHT_CONSISTENCY",
+                passed=True,
+                expected="POD weight should be close to LR weight",
+                actual=f"LR={lr_weight}, POD={pod_weight}",
+                message="Insufficient weight data for partial delivery check",
+            )
+
+        ratio = pod_weight / lr_weight
+        if ratio >= settings.partial_delivery_min_ratio:
+            return ValidationResult(
+                rule="WEIGHT_CONSISTENCY",
+                passed=True,
+                expected=f"POD/LR ratio >= {settings.partial_delivery_min_ratio:.2f}",
+                actual=f"POD/LR ratio={ratio:.3f}",
+                message="Delivered weight is consistent with shipped weight",
+            )
+
+        try:
+            lr_amount = float(lr.get("amount", 0) or 0)
+            inv_amount = float(inv.get("amount", 0) or 0)
+        except (TypeError, ValueError):
+            lr_amount = 0.0
+            inv_amount = 0.0
+
+        overcharge_hint = ""
+        if lr_amount > 0 and inv_amount > 0:
+            full_charge_variance = abs(inv_amount - lr_amount) / lr_amount
+            if full_charge_variance <= settings.partial_delivery_full_charge_tolerance:
+                overcharge_hint = " and invoice appears to charge full LR amount"
+
+        return ValidationResult(
+            rule="WEIGHT_CONSISTENCY",
+            passed=False,
+            expected=f"POD/LR ratio >= {settings.partial_delivery_min_ratio:.2f}",
+            actual=f"LR weight={lr_weight}, POD weight={pod_weight}, ratio={ratio:.3f}",
+            message=f"Partial/split delivery detected (shortfall {(1.0 - ratio) * 100:.1f}%){overcharge_hint}",
+        )
+
+    def _validate_contract_rate(self, inv: Dict, contract_rate: Dict | None) -> ValidationResult:
+        """Validate invoice amount/surcharges against agreed contract rates."""
+        if not contract_rate:
+            return ValidationResult(
+                rule="CONTRACT_RATE_MATCH",
+                passed=True,
+                expected="Active contract rate for vendor/route",
+                actual="No contract rate configured",
+                message="Skipped contract-rate validation due to missing contract setup",
+            )
+
+        try:
+            expected_total = (
+                float(contract_rate.get("base_rate", 0) or 0)
+                + float(contract_rate.get("fuel_surcharge", 0) or 0)
+                + float(contract_rate.get("detention_rate", 0) or 0)
+                + float(contract_rate.get("distance_rate", 0) or 0)
+            )
+            inv_amount = float(inv.get("amount", 0) or 0)
+        except (TypeError, ValueError):
+            return ValidationResult(
+                rule="CONTRACT_RATE_MATCH",
+                passed=False,
+                expected="Valid numeric contract and invoice values",
+                actual=f"contract={contract_rate}, invoice_amount={inv.get('amount')}",
+                message="Could not parse contract/invoice amount fields",
+            )
+
+        if expected_total <= 0:
+            return ValidationResult(
+                rule="CONTRACT_RATE_MATCH",
+                passed=True,
+                expected="Contract total > 0",
+                actual=f"expected_total={expected_total}",
+                message="Skipped contract mismatch check due to zero contract total",
+            )
+
+        variance = abs(inv_amount - expected_total) / expected_total
+        if variance > settings.contract_rate_tolerance:
+            return ValidationResult(
+                rule="CONTRACT_RATE_MATCH",
+                passed=False,
+                expected=f"Variance <= {settings.contract_rate_tolerance * 100:.1f}%",
+                actual=f"invoice={inv_amount}, contract_total={expected_total}, variance={variance * 100:.1f}%",
+                message="Invoice amount deviates from agreed contract rate",
+            )
+
+        fuel = float(contract_rate.get("fuel_surcharge", 0) or 0)
+        base = float(contract_rate.get("base_rate", 0) or 0)
+        detention = float(contract_rate.get("detention_rate", 0) or 0)
+        if base > 0 and fuel > base * settings.contract_fuel_surcharge_max_pct:
+            return ValidationResult(
+                rule="CONTRACT_RATE_MATCH",
+                passed=False,
+                expected=f"Fuel surcharge <= {settings.contract_fuel_surcharge_max_pct * 100:.0f}% of base rate",
+                actual=f"fuel={fuel}, base={base}",
+                message="Fuel surcharge exceeds policy limit",
+            )
+        if detention > settings.contract_max_detention_charge:
+            return ValidationResult(
+                rule="CONTRACT_RATE_MATCH",
+                passed=False,
+                expected=f"Detention charge <= {settings.contract_max_detention_charge}",
+                actual=f"detention={detention}",
+                message="Detention charge exceeds policy limit",
+            )
+
+        return ValidationResult(
+            rule="CONTRACT_RATE_MATCH",
+            passed=True,
+            expected=f"Variance <= {settings.contract_rate_tolerance * 100:.1f}%",
+            actual=f"invoice={inv_amount}, contract_total={expected_total}, variance={variance * 100:.1f}%",
+            message="Invoice amount is within agreed contract tolerance",
+        )
     
     def results_to_dict(self, results: List[ValidationResult]) -> List[Dict]:
         """Convert validation results to dictionary for JSON storage."""
