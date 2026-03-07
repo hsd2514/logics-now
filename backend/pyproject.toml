@@ -15,13 +15,13 @@ dependencies = [
     "pillow",
     "numpy",
     "scikit-learn",
-    "openai",
     "python-dotenv",
     "websockets",
     "pydantic",
     "pydantic-settings",
     "jinja2",
     "httpx",
+    "google-genai>=1.66.0",
 ]
 
 
