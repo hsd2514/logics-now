@@ -272,40 +272,6 @@ function App() {
             </div>
           </div>
         </div>
-
-        {/* Navigation Tabs */}
-        <div className="border-t border-slate-200 dark:border-slate-800">
-          <div className="container mx-auto px-6">
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-              {navItems.map(item => {
-                const Icon = item.icon
-                const isActive = activeTab === item.key
-                return (
-                  <button
-                    key={item.key}
-                    onClick={() => setActiveTab(item.key)}
-                    className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all whitespace-nowrap ${
-                      isActive 
-                        ? 'text-primary' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800/50'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                    {item.key === 'fraud' && (stats?.fraud?.open_alerts || 0) > 0 && (
-                      <span className="flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold rounded-full bg-red-500 text-white px-1">
-                        {stats.fraud.open_alerts}
-                      </span>
-                    )}
-                    {isActive && (
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-orange-500 via-red-500 to-purple-600"></div>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
       </header>
 
       <main className="container mx-auto px-6 py-8">
