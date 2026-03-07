@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from pydantic import BaseModel
 
 from app.database import get_db
 from app.models.fraud_alert import FraudAlert, AlertStatus

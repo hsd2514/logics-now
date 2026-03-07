@@ -6,7 +6,7 @@ from app.models.document import Document, DocumentStatus
 from app.models.triplet import Triplet, TripletStatus
 from app.models.fraud_alert import FraudAlert
 from app.pipeline.triplet_matcher import TripletMatcher
-from app.pipeline.data_validator import DataValidator
+from app.pipeline.validator import Validator
 from app.pipeline.fraud_detector import FraudDetector
 from app.ai.audit_generator import AuditGenerator
 from app.ai.vendor_patterns import VendorPatternLearner
