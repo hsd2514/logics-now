@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/Toaster';
 import { AlertTriangle, TrendingUp, Users, DollarSign, Activity, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { VendorRouteGlobe } from './VendorRouteGlobe';
 
 export function VendorAnalytics() {
   const [analytics, setAnalytics] = useState(null);
@@ -149,6 +150,12 @@ export function VendorAnalytics() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* 3D Route Visualization */}
+      <div>
+        <h3 className="text-2xl font-semibold mb-4">Shipping Routes Visualization</h3>
+        <VendorRouteGlobe vendors={profiles} height={600} />
       </div>
 
       {/* Charts */}
