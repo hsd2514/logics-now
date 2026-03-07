@@ -1,0 +1,329 @@
+0 verbose cli E:\nodejs\node.exe E:\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.9.4
+2 info using node@v22.21.0
+3 silly config load:file:E:\nvm\v22.21.0\node_modules\npm\npmrc
+4 silly config load:file:E:\hackathon\logics\frontend\.npmrc
+5 silly config load:file:C:\Users\dange\.npmrc
+6 silly config load:file:E:\nodejs\etc\npmrc
+7 verbose title npm install
+8 verbose argv "install" "--prefer-online" "--no-audit" "--cache" ".npm-cache"
+9 verbose logfile logs-max:10 dir:E:\hackathon\logics\frontend\.npm-cache\_logs\2026-03-07T19_13_04_323Z-
+10 verbose logfile E:\hackathon\logics\frontend\.npm-cache\_logs\2026-03-07T19_13_04_323Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+13 silly idealTree buildDeps
+14 http fetch GET 200 https://registry.npmjs.org/npm 574ms
+15 verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules
+16 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\accessor-fn' ]
+17 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\d3-delaunay' ]
+18 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\d3-geo' ]
+19 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\d3-geo-voronoi' ]
+20 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\d3-octree' ]
+21 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\d3-scale-chromatic' ]
+22 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\d3-selection' ]
+23 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\d3-tricontour' ]
+24 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\data-bind-mapper' ]
+25 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\delaunator' ]
+26 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\earcut' ]
+27 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\float-tooltip' ]
+28 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\frame-ticker' ]
+29 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\framer-motion' ]
+30 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\fsevents' ]
+31 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\globe.gl' ]
+32 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\h3-js' ]
+33 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\index-array-by' ]
+34 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\jerrypick' ]
+35 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\kapsule' ]
+36 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\lodash-es' ]
+37 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\motion-dom' ]
+38 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\motion-utils' ]
+39 silly reify mark retired [
+39 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\point-in-polygon-hao'
+39 silly reify ]
+40 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\polished' ]
+41 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\preact' ]
+42 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\react-globe.gl' ]
+43 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\react-kapsule' ]
+44 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\robust-predicates' ]
+45 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\simplesignal' ]
+46 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\three' ]
+47 silly reify mark retired [
+47 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\three-conic-polygon-geometry'
+47 silly reify ]
+48 silly reify mark retired [
+48 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\three-geojson-geometry'
+48 silly reify ]
+49 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\three-globe' ]
+50 silly reify mark retired [
+50 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\three-render-objects'
+50 silly reify ]
+51 silly reify mark retired [
+51 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\three-slippy-map-globe'
+51 silly reify ]
+52 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\tinycolor2' ]
+53 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\@babel\\runtime' ]
+54 silly reify mark retired [
+54 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\aix-ppc64'
+54 silly reify ]
+55 silly reify mark retired [
+55 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\android-arm'
+55 silly reify ]
+56 silly reify mark retired [
+56 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\android-arm64'
+56 silly reify ]
+57 silly reify mark retired [
+57 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\android-x64'
+57 silly reify ]
+58 silly reify mark retired [
+58 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\darwin-arm64'
+58 silly reify ]
+59 silly reify mark retired [
+59 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\darwin-x64'
+59 silly reify ]
+60 silly reify mark retired [
+60 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\freebsd-arm64'
+60 silly reify ]
+61 silly reify mark retired [
+61 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\freebsd-x64'
+61 silly reify ]
+62 silly reify mark retired [
+62 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-arm64'
+62 silly reify ]
+63 silly reify mark retired [
+63 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-ia32'
+63 silly reify ]
+64 silly reify mark retired [
+64 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-mips64el'
+64 silly reify ]
+65 silly reify mark retired [
+65 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-loong64'
+65 silly reify ]
+66 silly reify mark retired [
+66 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-arm'
+66 silly reify ]
+67 silly reify mark retired [
+67 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-ppc64'
+67 silly reify ]
+68 silly reify mark retired [
+68 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-riscv64'
+68 silly reify ]
+69 silly reify mark retired [
+69 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-x64'
+69 silly reify ]
+70 silly reify mark retired [
+70 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-s390x'
+70 silly reify ]
+71 silly reify mark retired [
+71 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\openbsd-x64'
+71 silly reify ]
+72 silly reify mark retired [
+72 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\netbsd-x64'
+72 silly reify ]
+73 silly reify mark retired [
+73 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\sunos-x64'
+73 silly reify ]
+74 silly reify mark retired [
+74 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\win32-arm64'
+74 silly reify ]
+75 silly reify mark retired [
+75 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\win32-ia32'
+75 silly reify ]
+76 silly reify mark retired [
+76 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-android-arm-eabi'
+76 silly reify ]
+77 silly reify mark retired [
+77 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-android-arm64'
+77 silly reify ]
+78 silly reify mark retired [
+78 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-darwin-x64'
+78 silly reify ]
+79 silly reify mark retired [
+79 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-freebsd-arm64'
+79 silly reify ]
+80 silly reify mark retired [
+80 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-freebsd-x64'
+80 silly reify ]
+81 silly reify mark retired [
+81 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-darwin-arm64'
+81 silly reify ]
+82 silly reify mark retired [
+82 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-arm-gnueabihf'
+82 silly reify ]
+83 silly reify mark retired [
+83 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-arm-musleabihf'
+83 silly reify ]
+84 silly reify mark retired [
+84 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-arm64-gnu'
+84 silly reify ]
+85 silly reify mark retired [
+85 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-arm64-musl'
+85 silly reify ]
+86 silly reify mark retired [
+86 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-loong64-gnu'
+86 silly reify ]
+87 silly reify mark retired [
+87 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-loong64-musl'
+87 silly reify ]
+88 silly reify mark retired [
+88 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-ppc64-musl'
+88 silly reify ]
+89 silly reify mark retired [
+89 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-ppc64-gnu'
+89 silly reify ]
+90 silly reify mark retired [
+90 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-riscv64-gnu'
+90 silly reify ]
+91 silly reify mark retired [
+91 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-riscv64-musl'
+91 silly reify ]
+92 silly reify mark retired [
+92 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-s390x-gnu'
+92 silly reify ]
+93 silly reify mark retired [
+93 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-x64-gnu'
+93 silly reify ]
+94 silly reify mark retired [
+94 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-x64-musl'
+94 silly reify ]
+95 silly reify mark retired [
+95 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-openharmony-arm64'
+95 silly reify ]
+96 silly reify mark retired [
+96 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-openbsd-x64'
+96 silly reify ]
+97 silly reify mark retired [
+97 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-win32-arm64-msvc'
+97 silly reify ]
+98 silly reify mark retired [
+98 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-win32-ia32-msvc'
+98 silly reify ]
+99 silly reify mark retired [
+99 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@turf\\boolean-point-in-polygon'
+99 silly reify ]
+100 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\@turf\\helpers' ]
+101 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\@turf\\invariant' ]
+102 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\@tweenjs\\tween.js' ]
+103 silly reify mark retired [ 'E:\\hackathon\\logics\\frontend\\node_modules\\@types\\geojson' ]
+104 silly reify moves {
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\accessor-fn': 'E:\\hackathon\\logics\\frontend\\node_modules\\.accessor-fn-tPk9CVhZ',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\d3-delaunay': 'E:\\hackathon\\logics\\frontend\\node_modules\\.d3-delaunay-OSsx36LT',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\d3-geo': 'E:\\hackathon\\logics\\frontend\\node_modules\\.d3-geo-tc1IjKQE',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\d3-geo-voronoi': 'E:\\hackathon\\logics\\frontend\\node_modules\\.d3-geo-voronoi-sSPyUZSE',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\d3-octree': 'E:\\hackathon\\logics\\frontend\\node_modules\\.d3-octree-vUAFoeVI',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\d3-scale-chromatic': 'E:\\hackathon\\logics\\frontend\\node_modules\\.d3-scale-chromatic-9dzvGWCC',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\d3-selection': 'E:\\hackathon\\logics\\frontend\\node_modules\\.d3-selection-gWd2zzAe',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\d3-tricontour': 'E:\\hackathon\\logics\\frontend\\node_modules\\.d3-tricontour-zekF36Qb',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\data-bind-mapper': 'E:\\hackathon\\logics\\frontend\\node_modules\\.data-bind-mapper-CyXPry01',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\delaunator': 'E:\\hackathon\\logics\\frontend\\node_modules\\.delaunator-EdsrKtqq',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\earcut': 'E:\\hackathon\\logics\\frontend\\node_modules\\.earcut-3IiGpP18',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\float-tooltip': 'E:\\hackathon\\logics\\frontend\\node_modules\\.float-tooltip-m3sqW51J',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\frame-ticker': 'E:\\hackathon\\logics\\frontend\\node_modules\\.frame-ticker-Aj7rC8RP',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\framer-motion': 'E:\\hackathon\\logics\\frontend\\node_modules\\.framer-motion-i9IA6DfJ',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\fsevents': 'E:\\hackathon\\logics\\frontend\\node_modules\\.fsevents-EVASNKkG',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\globe.gl': 'E:\\hackathon\\logics\\frontend\\node_modules\\.globe.gl-J6ZQjzRJ',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\h3-js': 'E:\\hackathon\\logics\\frontend\\node_modules\\.h3-js-afG1qwqq',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\index-array-by': 'E:\\hackathon\\logics\\frontend\\node_modules\\.index-array-by-fM5t8usq',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\jerrypick': 'E:\\hackathon\\logics\\frontend\\node_modules\\.jerrypick-pDRPVF2z',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\kapsule': 'E:\\hackathon\\logics\\frontend\\node_modules\\.kapsule-uvccEq8L',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\lodash-es': 'E:\\hackathon\\logics\\frontend\\node_modules\\.lodash-es-YbfkIgot',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\motion-dom': 'E:\\hackathon\\logics\\frontend\\node_modules\\.motion-dom-VLPFclgN',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\motion-utils': 'E:\\hackathon\\logics\\frontend\\node_modules\\.motion-utils-Zaqrsjzx',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\point-in-polygon-hao': 'E:\\hackathon\\logics\\frontend\\node_modules\\.point-in-polygon-hao-zN2VfHUj',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\polished': 'E:\\hackathon\\logics\\frontend\\node_modules\\.polished-mLaXDBWD',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\preact': 'E:\\hackathon\\logics\\frontend\\node_modules\\.preact-7lz4Blcf',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\react-globe.gl': 'E:\\hackathon\\logics\\frontend\\node_modules\\.react-globe.gl-xRnM18nY',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\react-kapsule': 'E:\\hackathon\\logics\\frontend\\node_modules\\.react-kapsule-QYtTJzfX',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\robust-predicates': 'E:\\hackathon\\logics\\frontend\\node_modules\\.robust-predicates-VHFxdlJG',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\simplesignal': 'E:\\hackathon\\logics\\frontend\\node_modules\\.simplesignal-1ZDlYfXj',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\three': 'E:\\hackathon\\logics\\frontend\\node_modules\\.three-PHBS0BTv',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\three-conic-polygon-geometry': 'E:\\hackathon\\logics\\frontend\\node_modules\\.three-conic-polygon-geometry-XHrM7srV',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\three-geojson-geometry': 'E:\\hackathon\\logics\\frontend\\node_modules\\.three-geojson-geometry-YK5ydKRw',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\three-globe': 'E:\\hackathon\\logics\\frontend\\node_modules\\.three-globe-QAxtImyv',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\three-render-objects': 'E:\\hackathon\\logics\\frontend\\node_modules\\.three-render-objects-APtV0MQG',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\three-slippy-map-globe': 'E:\\hackathon\\logics\\frontend\\node_modules\\.three-slippy-map-globe-1Xdcjxzx',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\tinycolor2': 'E:\\hackathon\\logics\\frontend\\node_modules\\.tinycolor2-E7idiD02',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@babel\\runtime': 'E:\\hackathon\\logics\\frontend\\node_modules\\@babel\\.runtime-ciKhpvL8',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\aix-ppc64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.aix-ppc64-ke0x3emx',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\android-arm': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.android-arm-WyhwDBLM',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\android-arm64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.android-arm64-3bN5GxSZ',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\android-x64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.android-x64-KkCqX9jk',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\darwin-arm64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.darwin-arm64-VOkQHbxx',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\darwin-x64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.darwin-x64-LTb973P1',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\freebsd-arm64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.freebsd-arm64-0sc0cXmo',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\freebsd-x64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.freebsd-x64-VIVIngaa',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-arm64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.linux-arm64-XGSKyI3h',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-ia32': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.linux-ia32-5nAddQNK',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-mips64el': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.linux-mips64el-vwZQajeD',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-loong64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.linux-loong64-IL7yTT3T',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-arm': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.linux-arm-rQX88ZQz',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-ppc64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.linux-ppc64-Pwsm58g7',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-riscv64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.linux-riscv64-W2OHhdR4',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-x64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.linux-x64-r9blHiTh',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\linux-s390x': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.linux-s390x-Pb4YUf9S',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\openbsd-x64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.openbsd-x64-apXEhYSy',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\netbsd-x64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.netbsd-x64-Sudmt9IO',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\sunos-x64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.sunos-x64-kYJlU60S',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\win32-arm64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.win32-arm64-P3InO9hY',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\win32-ia32': 'E:\\hackathon\\logics\\frontend\\node_modules\\@esbuild\\.win32-ia32-XHYJBy1W',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-android-arm-eabi': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-android-arm-eabi-3V9TAZPV',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-android-arm64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-android-arm64-5H6STuMw',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-darwin-x64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-darwin-x64-E7VkSZBG',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-freebsd-arm64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-freebsd-arm64-tS4DktWb',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-freebsd-x64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-freebsd-x64-y5pN57iw',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-darwin-arm64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-darwin-arm64-vxEC6aHs',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-arm-gnueabihf': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-arm-gnueabihf-aKkuwNvI',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-arm-musleabihf': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-arm-musleabihf-MVPcLp2H',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-arm64-gnu': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-arm64-gnu-wQPfjPBe',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-arm64-musl': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-arm64-musl-8uHPDIw6',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-loong64-gnu': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-loong64-gnu-JcbiYV0m',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-loong64-musl': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-loong64-musl-me1WP6bE',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-ppc64-musl': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-ppc64-musl-oqtPFlGz',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-ppc64-gnu': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-ppc64-gnu-1R30ZquK',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-riscv64-gnu': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-riscv64-gnu-99N3AlR5',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-riscv64-musl': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-riscv64-musl-Oyn64RCM',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-s390x-gnu': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-s390x-gnu-lRVQDmwj',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-x64-gnu': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-x64-gnu-TmQMCqT0',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-linux-x64-musl': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-linux-x64-musl-LbQ8aiCv',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-openharmony-arm64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-openharmony-arm64-lHtJRBVD',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-openbsd-x64': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-openbsd-x64-FIKNpGPp',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-win32-arm64-msvc': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-win32-arm64-msvc-CiGy035O',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\rollup-win32-ia32-msvc': 'E:\\hackathon\\logics\\frontend\\node_modules\\@rollup\\.rollup-win32-ia32-msvc-NQvZNQRi',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@turf\\boolean-point-in-polygon': 'E:\\hackathon\\logics\\frontend\\node_modules\\@turf\\.boolean-point-in-polygon-JIEV4ToZ',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@turf\\helpers': 'E:\\hackathon\\logics\\frontend\\node_modules\\@turf\\.helpers-NCZoCTVo',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@turf\\invariant': 'E:\\hackathon\\logics\\frontend\\node_modules\\@turf\\.invariant-igbjOhp9',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@tweenjs\\tween.js': 'E:\\hackathon\\logics\\frontend\\node_modules\\@tweenjs\\.tween.js-1ozeVMit',
+104 silly reify   'E:\\hackathon\\logics\\frontend\\node_modules\\@types\\geojson': 'E:\\hackathon\\logics\\frontend\\node_modules\\@types\\.geojson-od1V0cNU'
+104 silly reify }
+105 verbose stack Error: EPERM: operation not permitted, rmdir 'E:\hackathon\logics\frontend\node_modules\accessor-fn'
+106 error code EPERM
+107 error syscall rmdir
+108 error path E:\hackathon\logics\frontend\node_modules\accessor-fn
+109 error errno -4048
+110 error [Error: EPERM: operation not permitted, rmdir 'E:\hackathon\logics\frontend\node_modules\accessor-fn'] {
+110 error   errno: -4048,
+110 error   code: 'EPERM',
+110 error   syscall: 'rmdir',
+110 error   path: 'E:\\hackathon\\logics\\frontend\\node_modules\\accessor-fn'
+110 error }
+111 error
+111 error The operation was rejected by your operating system.
+111 error It's possible that the file was already in use (by a text editor or antivirus),
+111 error or that you lack permissions to access it.
+111 error
+111 error If you believe this might be a permissions issue, please double-check the
+111 error permissions of the file and its containing directories, or try running
+111 error the command again as root/Administrator.
+112 silly unfinished npm timer reify 1772910785822
+113 silly unfinished npm timer reify:retireShallow 1772910786558
+114 verbose cwd E:\hackathon\logics\frontend
+115 verbose os Windows_NT 10.0.26200
+116 verbose node v22.21.0
+117 verbose npm  v10.9.4
+118 notice
+118 notice New major version of npm available! 10.9.4 -> 11.11.0
+118 notice Changelog: https://github.com/npm/cli/releases/tag/v11.11.0
+118 notice To update run: npm install -g npm@11.11.0
+118 notice  { force: true, [Symbol(proc-log.meta)]: true }
+119 verbose exit -4048
+120 verbose code -4048
+121 error A complete log of this run can be found in: E:\hackathon\logics\frontend\.npm-cache\_logs\2026-03-07T19_13_04_323Z-debug-0.log

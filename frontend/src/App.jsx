@@ -306,7 +306,7 @@ function App() {
                 </Button>
               </div>
             </aside>
-            <section>
+            <section className="min-w-0">
 
               {/* Dashboard */}
               <TabsContent value="dashboard">

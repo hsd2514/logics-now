@@ -11,8 +11,10 @@ import { Card } from './ui/card';
  */
 export function VendorRouteGlobe({ vendors = [], height = 600 }) {
   const globeEl = useRef();
+  const containerRef = useRef();
   const [arcsData, setArcsData] = useState([]);
   const [pointsData, setPointsData] = useState([]);
+  const [globeSize, setGlobeSize] = useState({ width: 0, height });
 
   useEffect(() => {
     // Auto-rotate globe
@@ -21,6 +23,28 @@ export function VendorRouteGlobe({ vendors = [], height = 600 }) {
       globeEl.current.controls().autoRotateSpeed = 0.5;
     }
   }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return undefined;
+
+    const updateSize = () => {
+      setGlobeSize({
+        width: Math.max(0, Math.floor(el.clientWidth)),
+        height,
+      });
+    };
+
+    updateSize();
+    const ro = new ResizeObserver(updateSize);
+    ro.observe(el);
+    window.addEventListener('resize', updateSize);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, [height]);
 
   useEffect(() => {
     if (!vendors || vendors.length === 0) return;
@@ -95,12 +119,15 @@ export function VendorRouteGlobe({ vendors = [], height = 600 }) {
   }
 
   return (
-    <Card className="overflow-hidden">
-      <div style={{ height: `${height}px`, width: '100%' }}>
-        <Globe
-          ref={globeEl}
-          globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
-          backgroundColor="rgba(0,0,0,0)"
+    <Card className="overflow-hidden min-w-0">
+      <div ref={containerRef} className="w-full overflow-hidden" style={{ height: `${height}px` }}>
+        {globeSize.width > 0 && (
+          <Globe
+            ref={globeEl}
+            width={globeSize.width}
+            height={globeSize.height}
+            globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+            backgroundColor="rgba(0,0,0,0)"
           
           // Arc (route) configuration
           arcsData={arcsData}
@@ -133,9 +160,10 @@ export function VendorRouteGlobe({ vendors = [], height = 600 }) {
           `}
           
           // Atmosphere
-          atmosphereColor="#3b82f6"
-          atmosphereAltitude={0.15}
-        />
+            atmosphereColor="#3b82f6"
+            atmosphereAltitude={0.15}
+          />
+        )}
       </div>
       
       {/* Legend */}

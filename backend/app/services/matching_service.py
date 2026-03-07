@@ -302,6 +302,9 @@ class MatchingService:
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
         fraud_risk: Optional[str] = None,
+        document_type: Optional[str] = None,
+        route_origin: Optional[str] = None,
+        route_destination: Optional[str] = None,
     ) -> Tuple[List[Triplet], dict]:
         query = db.query(Triplet).options(
             joinedload(Triplet.invoice),
@@ -325,17 +328,34 @@ class MatchingService:
 
         triplets = query.order_by(Triplet.created_at.desc()).all()
 
-        if vendor_name or amount_min is not None or amount_max is not None or fraud_risk:
+        if (
+            vendor_name
+            or amount_min is not None
+            or amount_max is not None
+            or fraud_risk
+            or route_origin
+            or route_destination
+        ):
             filtered: List[Triplet] = []
+            doc_type = (document_type or "INVOICE").upper()
             for t in triplets:
-                inv_entities = (t.invoice.entities if t.invoice else {}) or {}
+                if doc_type == "LR":
+                    entities = (t.lr.entities if t.lr else {}) or {}
+                elif doc_type == "POD":
+                    entities = (t.pod.entities if t.pod else {}) or {}
+                else:
+                    entities = (t.invoice.entities if t.invoice else {}) or {}
 
                 if vendor_name:
-                    party = str(inv_entities.get("party_name", "")).lower()
+                    party = str(
+                        entities.get("party_name")
+                        or entities.get("vendor_name")
+                        or ""
+                    ).lower()
                     if vendor_name.lower() not in party:
                         continue
 
-                inv_amount = inv_entities.get("amount")
+                inv_amount = entities.get("amount")
                 if inv_amount is not None:
                     try:
                         amt = float(inv_amount)
@@ -346,6 +366,16 @@ class MatchingService:
                     except (TypeError, ValueError):
                         if amount_min is not None or amount_max is not None:
                             continue
+
+                if route_origin:
+                    origin = str(entities.get("origin", "")).lower()
+                    if route_origin.lower() not in origin:
+                        continue
+
+                if route_destination:
+                    destination = str(entities.get("destination", "")).lower()
+                    if route_destination.lower() not in destination:
+                        continue
 
                 if fraud_risk:
                     risk_map = {"HIGH": (0.7, 1.0), "MEDIUM": (0.4, 0.7), "LOW": (0.0, 0.4)}
