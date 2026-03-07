@@ -60,9 +60,9 @@ export function VendorAnalytics() {
 
   const getRiskBadge = (riskScore) => {
     if (riskScore >= 75) return <Badge variant="destructive">Critical</Badge>;
-    if (riskScore >= 50) return <Badge className="bg-orange-500">High</Badge>;
-    if (riskScore >= 25) return <Badge className="bg-yellow-500">Medium</Badge>;
-    return <Badge className="bg-green-500">Low</Badge>;
+    if (riskScore >= 50) return <Badge className="bg-orange-600 dark:bg-orange-500 text-white">High</Badge>;
+    if (riskScore >= 25) return <Badge className="bg-yellow-500 text-black">Medium</Badge>;
+    return <Badge className="bg-green-600 dark:bg-green-500 text-white">Low</Badge>;
   };
 
   if (loading) {
@@ -358,7 +358,7 @@ export function VendorAnalytics() {
                     <h4 className="font-semibold mb-2 text-red-500">Fraud Alerts ({selectedVendor.fraud_alerts.length})</h4>
                     <div className="space-y-2">
                       {selectedVendor.fraud_alerts.slice(0, 3).map((alert) => (
-                        <div key={alert.id} className="border border-red-200 rounded-lg p-3 bg-red-50">
+                        <div key={alert.id} className="border border-red-200 dark:border-red-800 rounded-lg p-3 bg-red-100/50 dark:bg-red-950/20">
                           <div className="flex justify-between items-start">
                             <div>
                               <p className="font-medium text-sm">{alert.alert_type}</p>

@@ -42,9 +42,9 @@ export function DocumentChat({ documentId, documentName, onClose }) {
         })
       })
     } catch (error) {
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'Sorry, I encountered an error. Please try again.' 
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.'
       }])
     } finally {
       setLoading(false)
@@ -66,7 +66,7 @@ export function DocumentChat({ documentId, documentName, onClose }) {
   ]
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="flex flex-col h-[600px]">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -81,7 +81,7 @@ export function DocumentChat({ documentId, documentName, onClose }) {
           Chatting with: {documentName}
         </p>
       </CardHeader>
-      
+
       <CardContent className="flex-1 flex flex-col overflow-hidden">
         {/* Messages */}
         <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
@@ -92,11 +92,10 @@ export function DocumentChat({ documentId, documentName, onClose }) {
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                    message.role === 'user'
+                  className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${message.role === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted'
-                  }`}
+                    }`}
                 >
                   {message.content || (loading && idx === messages.length - 1 && (
                     <Loader2 className="h-4 w-4 animate-spin" />
