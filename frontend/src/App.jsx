@@ -3,11 +3,11 @@ import {
   FileText, Upload, LayoutDashboard, ShieldAlert,
   RefreshCw, Wifi, WifiOff, Moon, Sun, BarChart2,
   ChevronLeft, ChevronRight, Sparkles, AlertTriangle,
-  Download, Settings, MessageSquare,
+  Download, Users, PackageCheck,
 } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs'
+import { Tabs, TabsContent } from './components/ui/tabs'
 import { Badge } from './components/ui/badge'
 import { DocumentUpload } from './components/DocumentUpload'
 import { TripletCard } from './components/TripletCard'
@@ -18,6 +18,8 @@ import { DocumentChat } from './components/DocumentChat'
 import { StatsCards } from './components/StatsCards'
 import { AttentionHeatmap } from './components/AttentionHeatmap'
 import { DashboardCharts } from './components/DashboardCharts'
+import { VendorAnalytics } from './components/VendorAnalytics'
+import { BatchUploadProgress } from './components/BatchUploadProgress'
 import { CardSkeleton, StatsCardSkeleton } from './components/Skeleton'
 import { useDocuments } from './hooks/useDocuments'
 import { useTriplets } from './hooks/useTriplets'
@@ -46,6 +48,8 @@ function App() {
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { key: 'charts', label: 'Analytics', icon: BarChart2 },
     { key: 'upload', label: 'Documents', icon: Upload },
+    { key: 'batch', label: 'Batch Upload', icon: PackageCheck },
+    { key: 'vendors', label: 'Vendors', icon: Users },
     { key: 'fraud', label: 'Fraud Detection', icon: ShieldAlert },
   ]
 
@@ -438,6 +442,16 @@ function App() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* #30 Batch Upload */}
+          <TabsContent value="batch">
+            <BatchUploadProgress />
+          </TabsContent>
+
+          {/* #28 Vendor Analytics */}
+          <TabsContent value="vendors">
+            <VendorAnalytics />
           </TabsContent>
 
           {/* Fraud */}

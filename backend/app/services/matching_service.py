@@ -6,6 +6,7 @@ from sqlalchemy.orm.session import object_session
 
 from app.ai.audit_generator import AuditGenerator
 from app.ai.vendor_patterns import VendorPatternLearner
+from app.services.vendor_service import VendorService
 from app.config import get_settings
 from app.models.audit_log import AuditLog
 from app.models.document import Document, DocumentStatus
@@ -32,10 +33,10 @@ class MatchingService:
         self.fraud_detector = FraudDetector()
         self.audit_generator = AuditGenerator()
         self.vendor_learner = VendorPatternLearner()
+        self.vendor_service = VendorService()
         self.active_learner = ActiveLearner()
         self.contrastive_learner = ContrastiveLearner()
         self.embedding_service = EmbeddingService()
-
     def match_documents(self, db: Session) -> Tuple[List[Triplet], List[dict]]:
         """Find and create triplet matches from unmatched documents."""
         lrs = db.query(Document).filter(
@@ -242,11 +243,27 @@ class MatchingService:
                 triplet.status = TripletStatus.REVIEW
 
         if vendor_name:
-            origin = (invoice.entities or {}).get("origin")
-            dest = (invoice.entities or {}).get("destination")
-            route = (origin, dest) if origin and dest else None
+            origin = (invoice.entities or {}).get("origin", "")
+            dest = (invoice.entities or {}).get("destination", "")
+            route = f"{origin}-{dest}" if origin and dest else ""
+            amount = (invoice.entities or {}).get("amount", 0)
+
+            date_str = (invoice.entities or {}).get("date")
+            try:
+                invoice_date = (
+                    datetime.strptime(date_str, "%Y-%m-%d")
+                    if date_str
+                    else datetime.now()
+                )
+            except Exception:
+                invoice_date = datetime.now()
+
+            self.vendor_service.update_vendor_profile(
+                db, vendor_name, float(amount) if amount else 0.0, route, invoice_date
+            )
+
             self.vendor_learner.update_vendor_profile(
-                db, vendor_name, invoice.entities or {}, route
+                db, vendor_name, invoice.entities or {}, (origin, dest) if origin and dest else None
             )
 
         lr.status = DocumentStatus.MATCHED
