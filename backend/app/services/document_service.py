@@ -12,6 +12,8 @@ from app.pipeline.preprocessor import Preprocessor
 from app.pipeline.ocr_engine import OCREngine
 from app.pipeline.entity_extractor import EntityExtractor
 from app.config import get_settings
+from app.services.websocket_manager import ws_manager
+import asyncio
 
 settings = get_settings()
 
@@ -107,26 +109,53 @@ class DocumentService:
         if file_ext in ['.html', '.htm']:
             return await self.process_html_document(db, document)
         
-        # Image/PDF processing with OCR
+        document.status = DocumentStatus.PROCESSING
+        db.commit()
+        
+        await ws_manager.send_processing_update(
+            document.id, 'PREPROCESSING', 10, 'Starting preprocessing'
+        )
+        
         # Stage 1: Preprocessing
-        enhanced_image, quality_score = self.preprocessor.process(document.file_path)
+        processed_image, quality_score = await asyncio.to_thread(
+            self.preprocessor.process, document.file_path
+        ) # Kept original return values
         
+        await ws_manager.send_processing_update(
+            document.id, 'OCR', 30, 'Running OCR extraction'
+        )
+
         # Stage 2: OCR
-        ocr_text, text_blocks, ocr_confidence = self.ocr_engine.extract(enhanced_image)
+        ocr_text, text_blocks, ocr_confidence = await asyncio.to_thread(
+            self.ocr_engine.extract, processed_image
+        ) # Kept original return values
         
+        await ws_manager.send_processing_update(
+            document.id, 'NER', 70, 'Extracting entities'
+        )
+
         # Stage 3: Entity Extraction
-        entities, ner_confidence = self.entity_extractor.extract_for_document_type(
+        entities, ner_confidence = await asyncio.to_thread(
+            self.entity_extractor.extract_for_document_type,
             ocr_text, document.type
         )
         
         # Update document
+
         document.ocr_text = ocr_text
         document.ocr_confidence = ocr_confidence
-        document.text_blocks = self.ocr_engine.blocks_to_dict(text_blocks)
+        document.text_blocks = await asyncio.to_thread(
+            self.ocr_engine.blocks_to_dict, text_blocks
+        )
         document.entities = entities
         document.status = DocumentStatus.PROCESSED
         
         db.commit()
+
+        await ws_manager.send_processing_update(
+            document.id, 'DONE', 100, 'Processing complete'
+        )
+        
         return document
     
     async def process_html_document(self, db: Session, document: Document) -> Document:
@@ -135,13 +164,25 @@ class DocumentService:
         with open(document.file_path, 'r', encoding='utf-8') as f:
             html_content = f.read()
         
+        await ws_manager.send_processing_update(
+            document.id, 'EXTRACTION', 30, 'Parsing HTML'
+        )
+
         # Extract text from HTML
-        parser = HTMLTextExtractor()
-        parser.feed(html_content)
-        extracted_text = parser.get_text()
+        def extract_html(html):
+            parser = HTMLTextExtractor()
+            parser.feed(html)
+            return parser.get_text()
+
+        extracted_text = await asyncio.to_thread(extract_html, html_content)
         
+        await ws_manager.send_processing_update(
+            document.id, 'NER', 70, 'Extracting entities'
+        )
+
         # Stage 3: Entity Extraction
-        entities, ner_confidence = self.entity_extractor.extract_for_document_type(
+        entities, ner_confidence = await asyncio.to_thread(
+            self.entity_extractor.extract_for_document_type,
             extracted_text, document.type
         )
         
@@ -153,6 +194,11 @@ class DocumentService:
         document.status = DocumentStatus.PROCESSED
         
         db.commit()
+
+        await ws_manager.send_processing_update(
+            document.id, 'DONE', 100, 'Processing complete'
+        )
+        
         return document
     
     def get_document(self, db: Session, doc_id: str) -> Optional[Document]:

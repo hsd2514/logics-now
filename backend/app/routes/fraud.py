@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import List, Optional
+from pydantic import BaseModel
 from typing import List
 from datetime import datetime
 
@@ -47,22 +49,35 @@ def get_alert(alert_id: str, db: Session = Depends(get_db)):
     
     return FraudAlertResponse.model_validate(alert)
 
+from fastapi import Request
+
+# Simulated auth dependency
+def get_current_user(request: Request):
+    # In a real app this would decode a token. Here we simulate an authenticated user.
+    return getattr(request.state, "user", "system_user")
+
+class ActionRequest(BaseModel):
+    notes: Optional[str] = None
+
 @router.post("/alerts/{alert_id}/dismiss")
 def dismiss_alert(
     alert_id: str,
-    notes: str = None,
-    user_id: str = None,
+    action: ActionRequest,
+    current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Dismiss a fraud alert."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+        
     alert = db.query(FraudAlert).filter(FraudAlert.id == alert_id).first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     
     alert.status = AlertStatus.DISMISSED
     alert.resolved_at = datetime.now()
-    alert.resolved_by = user_id
-    alert.resolution_notes = notes
+    alert.resolved_by = current_user
+    alert.resolution_notes = action.notes
     
     # Audit log: record the human decision to dismiss
     audit = AuditLog(
@@ -83,19 +98,22 @@ def dismiss_alert(
 @router.post("/alerts/{alert_id}/confirm")
 def confirm_alert(
     alert_id: str,
-    notes: str = None,
-    user_id: str = None,
+    action: ActionRequest,
+    current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Confirm a fraud alert as legitimate fraud."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+        
     alert = db.query(FraudAlert).filter(FraudAlert.id == alert_id).first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     
     alert.status = AlertStatus.CONFIRMED
     alert.resolved_at = datetime.now()
-    alert.resolved_by = user_id
-    alert.resolution_notes = notes
+    alert.resolved_by = current_user
+    alert.resolution_notes = action.notes
     
     # Audit log: record the human decision to confirm fraud
     audit = AuditLog(
@@ -112,6 +130,7 @@ def confirm_alert(
     db.commit()
     
     return {"message": "Alert confirmed as fraud", "alert_id": alert_id}
+
 
 @router.get("/predictions", response_model=List[PredictiveAlertResponse])
 def get_predictive_alerts(db: Session = Depends(get_db)):

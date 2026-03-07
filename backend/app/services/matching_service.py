@@ -14,7 +14,6 @@ from app.pipeline.fraud_detector import FraudDetector
 from app.ai.audit_generator import AuditGenerator
 from app.ai.vendor_patterns import VendorPatternLearner
 from app.config import get_settings
-
 settings = get_settings()
 
 class MatchingService:
@@ -28,7 +27,7 @@ class MatchingService:
         self.audit_generator = AuditGenerator()
         self.vendor_learner = VendorPatternLearner()
     
-    def match_documents(self, db: Session) -> List[Triplet]:
+    def match_documents(self, db: Session) -> Tuple[List[Triplet], List[dict]]:
         """Find and create triplet matches from unmatched documents."""
         # Get unmatched documents
         lrs = db.query(Document).filter(
@@ -58,8 +57,9 @@ class MatchingService:
         matches = self.matcher.find_best_matches(lr_data, pod_data, invoice_data)
         
         created_triplets = []
+        all_events = []
         for match in matches:
-            triplet = self.create_triplet(
+            triplet, events = self.create_triplet(
                 db, 
                 match.lr_id, 
                 match.pod_id, 
@@ -70,8 +70,9 @@ class MatchingService:
             )
             if triplet:
                 created_triplets.append(triplet)
+                all_events.extend(events)
         
-        return created_triplets
+        return created_triplets, all_events
     
     def create_triplet(
         self,
@@ -82,7 +83,7 @@ class MatchingService:
         match_score: float,
         initial_confidence: float,
         attention_map: List = None
-    ) -> Optional[Triplet]:
+    ) -> Tuple[Optional[Triplet], List[dict]]:
         """Create a triplet with full validation and fraud detection."""
         # Get documents
         lr = db.query(Document).filter(Document.id == lr_id).first()
@@ -90,7 +91,9 @@ class MatchingService:
         invoice = db.query(Document).filter(Document.id == invoice_id).first()
         
         if not (lr and pod and invoice):
-            return None
+            return None, []
+        
+        pending_events = []
         
         # Stage 5: Validation
         validation_results, rule_pass_score = self.validator.validate_triplet(
@@ -141,13 +144,10 @@ class MatchingService:
         )
         
         db.add(triplet)
+        db.flush() # flush to assign DB ID and populate object relationships
         
         # Stage 6: Fraud Detection
-        triplet_data = {
-            'lr_entities': lr.entities or {},
-            'pod_entities': pod.entities or {},
-            'invoice_entities': invoice.entities or {}
-        }
+        triplet_data = self._triplet_to_dict(db, triplet)
         
         # Get historical triplets for comparison
         historical = self._get_recent_triplets(db, limit=100)
@@ -165,7 +165,7 @@ class MatchingService:
         risk_score, fraud_alerts = self.fraud_detector.detect(
             triplet_data,
             vendor_profile.__dict__ if vendor_profile else None,
-            [self._triplet_to_dict(t) for t in historical]
+            [self._triplet_to_dict(db, t) for t in historical]
         )
         
         # Create fraud alerts
@@ -177,10 +177,17 @@ class MatchingService:
                 details=alert.details,
                 ai_reasoning=alert.reasoning
             )
-            db.add(fraud_alert)
+            db.flush() # Flush to get ID for websocket
+            
+            pending_events.append({
+                'type': 'fraud_alert',
+                'id': fraud_alert.id,
+                'risk_score': fraud_alert.risk_score,
+                'alert_type': fraud_alert.alert_type
+            })
             
             # If high risk, change status to review
-            if alert.risk_score > 0.7:
+            if alert.risk_score > settings.fraud_high_risk_alert_threshold:
                 triplet.status = TripletStatus.REVIEW
         
         # Update vendor profile
@@ -199,6 +206,13 @@ class MatchingService:
         
         db.commit()
         
+        pending_events.append({
+            'type': 'match_found',
+            'id': triplet.id,
+            'match_score': triplet.match_score
+        })
+        
+        return triplet, pending_events
         # Write audit log: triplet creation
         self._write_audit(
             db, triplet, action="CREATED",
@@ -395,6 +409,43 @@ class MatchingService:
             'ocr_text': doc.ocr_text or ''
         }
     
+    def _triplet_to_dict(self, db: Session, triplet: Triplet) -> dict:
+        """Convert triplet to dict for fraud detection, enriched with ML features."""
+        lr_entities = (triplet.lr.entities or {}) if triplet.lr else {}
+        pod_entities = (triplet.pod.entities or {}) if triplet.pod else {}
+        invoice_entities = (triplet.invoice.entities or {}) if triplet.invoice else {}
+        
+        freq = 0.0
+        amt_dev = 0.0
+        route_score = 0.0
+        
+        vendor_name = invoice_entities.get('party_name')
+        if vendor_name:
+            from app.models.vendor_profile import VendorProfile
+            profile = db.query(VendorProfile).filter(VendorProfile.vendor_name == vendor_name).first()
+            if profile:
+                freq = float(profile.total_invoices)
+                
+                amount = float(invoice_entities.get('amount', 0))
+                avg = float(profile.avg_amount)
+                amt_dev = abs(amount - avg) / (avg if avg > 0 else 1.0)
+                
+                origin = invoice_entities.get('origin', '').lower()
+                dest = invoice_entities.get('destination', '').lower()
+                if origin and dest and profile.route_patterns:
+                    route = f"{origin}-{dest}"
+                    if route not in [r.lower() for r in profile.route_patterns]:
+                        route_score = 1.0
+
+        return {
+            'id': triplet.id,
+            'lr_entities': lr_entities,
+            'pod_entities': pod_entities,
+            'invoice_entities': invoice_entities,
+            'created_at': triplet.created_at,
+            'frequency_score': freq,
+            'amount_deviation': amt_dev,
+            'route_score': route_score
     def _triplet_to_dict(self, triplet: Triplet) -> dict:
         """Convert triplet to dict for fraud detection.
         
