@@ -33,18 +33,78 @@ async def upload_batch(
     doc_type: str = Query(..., description="Document type for all files"),
     db: Session = Depends(get_db)
 ):
-    """Upload and process multiple documents."""
+    """Upload and process multiple documents with real-time progress tracking."""
     if doc_type.upper() not in ["LR", "POD", "INVOICE"]:
         raise HTTPException(status_code=400, detail="Invalid document type")
     
+    from app.services.websocket_manager import ws_manager
+    import uuid
+    
+    # Generate batch ID for tracking
+    batch_id = str(uuid.uuid4())
+    total_files = len(files)
+    
+    # Send batch start notification
+    await ws_manager.broadcast_json({
+        'type': 'batch_start',
+        'batch_id': batch_id,
+        'total_files': total_files,
+        'doc_type': doc_type
+    })
+    
     results = []
-    for file in files:
-        document = await document_service.upload_and_process(db, file, doc_type)
-        results.append(DocumentUploadResponse(
-            id=document.id,
-            message="Processed",
-            status=document.status
-        ))
+    for index, file in enumerate(files):
+        # Send batch progress update
+        await ws_manager.broadcast_json({
+            'type': 'batch_progress',
+            'batch_id': batch_id,
+            'current': index + 1,
+            'total': total_files,
+            'file_name': file.filename,
+            'progress': ((index + 1) / total_files) * 100
+        })
+        
+        try:
+            # Upload and process document (this will send individual document progress)
+            document = await document_service.upload_and_process(db, file, doc_type)
+            results.append(DocumentUploadResponse(
+                id=document.id,
+                message="Processed",
+                status=document.status
+            ))
+            
+            # Send file complete notification
+            await ws_manager.broadcast_json({
+                'type': 'batch_file_complete',
+                'batch_id': batch_id,
+                'file_name': file.filename,
+                'document_id': document.id,
+                'status': document.status
+            })
+        except Exception as e:
+            results.append(DocumentUploadResponse(
+                id="",
+                message=f"Error: {str(e)}",
+                status="ERROR"
+            ))
+            
+            # Send file error notification
+            await ws_manager.broadcast_json({
+                'type': 'batch_file_error',
+                'batch_id': batch_id,
+                'file_name': file.filename,
+                'error': str(e)
+            })
+    
+    # Send batch complete notification
+    successful = sum(1 for r in results if r.status != "ERROR")
+    await ws_manager.broadcast_json({
+        'type': 'batch_complete',
+        'batch_id': batch_id,
+        'total': total_files,
+        'successful': successful,
+        'failed': total_files - successful
+    })
     
     return results
 

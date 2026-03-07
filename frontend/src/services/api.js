@@ -115,4 +115,10 @@ export const getAuditTrail = (tripletId) => api.get(`/ai/audit/${tripletId}`)
 // Stats
 export const getStats = () => api.get('/stats')
 
+// Vendors
+export const getVendorAnalytics = () => api.get('/vendors/analytics')
+export const getVendorProfiles = (params) => api.get('/vendors/profiles', { params })
+export const getVendorDetails = (vendorName) => api.get(`/vendors/${encodeURIComponent(vendorName)}`)
+export const refreshVendorProfiles = () => api.post('/vendors/refresh')
+
 export default api

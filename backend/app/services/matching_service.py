@@ -13,6 +13,7 @@ from app.pipeline.validator import Validator
 from app.pipeline.fraud_detector import FraudDetector
 from app.ai.audit_generator import AuditGenerator
 from app.ai.vendor_patterns import VendorPatternLearner
+from app.services.vendor_service import VendorService
 from app.config import get_settings
 settings = get_settings()
 
@@ -26,6 +27,7 @@ class MatchingService:
         self.fraud_detector = FraudDetector()
         self.audit_generator = AuditGenerator()
         self.vendor_learner = VendorPatternLearner()
+        self.vendor_service = VendorService()
     
     def match_documents(self, db: Session) -> Tuple[List[Triplet], List[dict]]:
         """Find and create triplet matches from unmatched documents."""
@@ -192,11 +194,26 @@ class MatchingService:
         
         # Update vendor profile
         if vendor_name:
-            origin = (invoice.entities or {}).get('origin')
-            dest = (invoice.entities or {}).get('destination')
-            route = (origin, dest) if origin and dest else None
+            origin = (invoice.entities or {}).get('origin', '')
+            dest = (invoice.entities or {}).get('destination', '')
+            route = f"{origin}-{dest}" if origin and dest else ""
+            amount = (invoice.entities or {}).get('amount', 0)
+            
+            # Parse invoice date
+            date_str = (invoice.entities or {}).get('date')
+            try:
+                invoice_date = datetime.strptime(date_str, '%Y-%m-%d') if date_str else datetime.now()
+            except:
+                invoice_date = datetime.now()
+            
+            # Update comprehensive vendor profile
+            self.vendor_service.update_vendor_profile(
+                db, vendor_name, float(amount) if amount else 0.0, route, invoice_date
+            )
+            
+            # Also update legacy vendor learner for backward compatibility
             self.vendor_learner.update_vendor_profile(
-                db, vendor_name, invoice.entities or {}, route
+                db, vendor_name, invoice.entities or {}, (origin, dest) if origin and dest else None
             )
         
         # Mark documents as matched
@@ -446,6 +463,8 @@ class MatchingService:
             'frequency_score': freq,
             'amount_deviation': amt_dev,
             'route_score': route_score
+        }
+    
     def _triplet_to_dict(self, triplet: Triplet) -> dict:
         """Convert triplet to dict for fraud detection.
         

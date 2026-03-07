@@ -271,35 +271,156 @@ class TripletMatcher:
         pod_docs: List[Dict], 
         invoice_docs: List[Dict]
     ) -> List[MatchResult]:
-        """Find best triplet matches from document pools."""
-        matches = []
+        """Find best triplet matches from document pools using blocking for O(n) optimization."""
+        # Build indexes by shipment_id for O(1) lookup
+        lr_index = self._build_index(lr_docs, 'shipment_id')
+        pod_index = self._build_index(pod_docs, 'shipment_id')
+        invoice_index = self._build_index(invoice_docs, 'shipment_id')
         
-        for lr in lr_docs:
-            for pod in pod_docs:
-                for inv in invoice_docs:
-                    score, conf, fields, attention = self.match_triplet(
-                        lr.get('entities', {}),
-                        pod.get('entities', {}),
-                        inv.get('entities', {}),
-                        lr.get('text_blocks'),
-                        pod.get('text_blocks'),
-                        inv.get('text_blocks')
-                    )
-                    
-                    if score > settings.min_match_score:  # configurable minimum threshold
-                        matches.append(MatchResult(
-                            lr_id=lr['id'],
-                            pod_id=pod['id'],
-                            invoice_id=inv['id'],
-                            match_score=score,
-                            confidence=conf,
-                            field_matches=fields,
-                            attention_map=attention
-                        ))
+        matches = []
+        processed_combinations = set()
+        
+        # Strategy 1: Exact shipment_id matches (O(n))
+        all_shipment_ids = set(lr_index.keys()) | set(pod_index.keys()) | set(invoice_index.keys())
+        
+        for shipment_id in all_shipment_ids:
+            lrs = lr_index.get(shipment_id, [])
+            pods = pod_index.get(shipment_id, [])
+            invs = invoice_index.get(shipment_id, [])
+            
+            # Match all combinations within this block (small groups)
+            for lr in lrs:
+                for pod in pods:
+                    for inv in invs:
+                        combo = (lr['id'], pod['id'], inv['id'])
+                        if combo in processed_combinations:
+                            continue
+                        processed_combinations.add(combo)
+                        
+                        score, conf, fields, attention = self.match_triplet(
+                            lr.get('entities', {}),
+                            pod.get('entities', {}),
+                            inv.get('entities', {}),
+                            lr.get('text_blocks'),
+                            pod.get('text_blocks'),
+                            inv.get('text_blocks')
+                        )
+                        
+                        if score > settings.min_match_score:
+                            matches.append(MatchResult(
+                                lr_id=lr['id'],
+                                pod_id=pod['id'],
+                                invoice_id=inv['id'],
+                                match_score=score,
+                                confidence=conf,
+                                field_matches=fields,
+                                attention_map=attention
+                            ))
+        
+        # Strategy 2: Fuzzy fallback for docs without shipment_id or with minor variations
+        unmatched_lrs = [d for d in lr_docs if not d.get('entities', {}).get('shipment_id') or d['id'] not in {m.lr_id for m in matches}]
+        unmatched_pods = [d for d in pod_docs if not d.get('entities', {}).get('shipment_id') or d['id'] not in {m.pod_id for m in matches}]
+        unmatched_invs = [d for d in invoice_docs if not d.get('entities', {}).get('shipment_id') or d['id'] not in {m.invoice_id for m in matches}]
+        
+        # Use secondary blocking on vendor name + amount range
+        if unmatched_lrs and unmatched_pods and unmatched_invs:
+            fuzzy_matches = self._fuzzy_block_matching(unmatched_lrs, unmatched_pods, unmatched_invs, processed_combinations)
+            matches.extend(fuzzy_matches)
         
         # Sort by score and return best non-overlapping matches
         matches.sort(key=lambda x: x.match_score, reverse=True)
         return self._select_best_non_overlapping(matches)
+    
+    def _build_index(self, docs: List[Dict], key: str) -> Dict[str, List[Dict]]:
+        """Build an index mapping key values to documents."""
+        index = {}
+        for doc in docs:
+            value = doc.get('entities', {}).get(key)
+            if value:
+                # Normalize the key
+                normalized = str(value).strip().upper()
+                if normalized not in index:
+                    index[normalized] = []
+                index[normalized].append(doc)
+        return index
+    
+    def _fuzzy_block_matching(
+        self, 
+        lrs: List[Dict], 
+        pods: List[Dict], 
+        invs: List[Dict],
+        processed: set
+    ) -> List[MatchResult]:
+        """Fallback fuzzy matching using vendor/amount blocking."""
+        matches = []
+        
+        # Build secondary index on vendor + amount bucket
+        lr_blocks = self._build_secondary_index(lrs)
+        pod_blocks = self._build_secondary_index(pods)
+        inv_blocks = self._build_secondary_index(invs)
+        
+        all_blocks = set(lr_blocks.keys()) | set(pod_blocks.keys()) | set(inv_blocks.keys())
+        
+        for block_key in all_blocks:
+            block_lrs = lr_blocks.get(block_key, [])
+            block_pods = pod_blocks.get(block_key, [])
+            block_invs = inv_blocks.get(block_key, [])
+            
+            # Only match within small blocks
+            for lr in block_lrs:
+                for pod in block_pods:
+                    for inv in block_invs:
+                        combo = (lr['id'], pod['id'], inv['id'])
+                        if combo in processed:
+                            continue
+                        processed.add(combo)
+                        
+                        score, conf, fields, attention = self.match_triplet(
+                            lr.get('entities', {}),
+                            pod.get('entities', {}),
+                            inv.get('entities', {}),
+                            lr.get('text_blocks'),
+                            pod.get('text_blocks'),
+                            inv.get('text_blocks')
+                        )
+                        
+                        if score > settings.min_match_score:
+                            matches.append(MatchResult(
+                                lr_id=lr['id'],
+                                pod_id=pod['id'],
+                                invoice_id=inv['id'],
+                                match_score=score,
+                                confidence=conf,
+                                field_matches=fields,
+                                attention_map=attention
+                            ))
+        
+        return matches
+    
+    def _build_secondary_index(self, docs: List[Dict]) -> Dict[str, List[Dict]]:
+        """Build secondary index using vendor + amount bucket."""
+        index = {}
+        for doc in docs:
+            entities = doc.get('entities', {})
+            vendor = str(entities.get('party_name', '')).strip().upper()[:10]  # First 10 chars
+            amount = entities.get('amount', 0)
+            
+            # Bucket amounts into ranges (0-10k, 10k-50k, 50k-100k, 100k+)
+            if amount < 10000:
+                bucket = 'A'
+            elif amount < 50000:
+                bucket = 'B'
+            elif amount < 100000:
+                bucket = 'C'
+            else:
+                bucket = 'D'
+            
+            block_key = f"{vendor}_{bucket}"
+            if block_key not in index:
+                index[block_key] = []
+            index[block_key].append(doc)
+        
+        return index
     
     def _select_best_non_overlapping(self, matches: List[MatchResult]) -> List[MatchResult]:
         """Select best matches ensuring each document is used only once."""

@@ -3,6 +3,7 @@ import {
   FileText, Upload, LayoutDashboard, ShieldAlert,
   RefreshCw, Wifi, WifiOff, Moon, Sun, BarChart2,
   ChevronLeft, ChevronRight, Sparkles, AlertTriangle,
+  Users, PackageCheck,
 } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
@@ -17,6 +18,8 @@ import { DocumentChat } from './components/DocumentChat'
 import { StatsCards } from './components/StatsCards'
 import { AttentionHeatmap } from './components/AttentionHeatmap'
 import { DashboardCharts } from './components/DashboardCharts'
+import { VendorAnalytics } from './components/VendorAnalytics'
+import { BatchUploadProgress } from './components/BatchUploadProgress'
 import { CardSkeleton, StatsCardSkeleton } from './components/Skeleton'
 import { useDocuments } from './hooks/useDocuments'
 import { useTriplets } from './hooks/useTriplets'
@@ -41,6 +44,7 @@ function App() {
   const [filters,         setFilters]         = useState({})
   const [page,            setPage]            = useState(1)
   const [fraudAlerts,     setFraudAlerts]     = useState([])
+  const [showBatchUpload, setShowBatchUpload] = useState(false)
 
   const { documents, fetchDocuments, uploadDocument, loading: docsLoading, error: docsError } = useDocuments()
   const { triplets, stats: tripletStats, fetchTriplets, runMatching, approveTriplet, rejectTriplet, loading: tripletsLoading, error: tripletsError } = useTriplets()
@@ -242,6 +246,14 @@ function App() {
             <TabsTrigger value="upload">
               <Upload className="h-4 w-4 mr-1" />Upload
             </TabsTrigger>
+            {/* #30 Batch Upload tab */}
+            <TabsTrigger value="batch">
+              <PackageCheck className="h-4 w-4 mr-1" />Batch Upload
+            </TabsTrigger>
+            {/* #28 Vendors tab */}
+            <TabsTrigger value="vendors">
+              <Users className="h-4 w-4 mr-1" />Vendors
+            </TabsTrigger>
             <TabsTrigger value="fraud">
               <ShieldAlert className="h-4 w-4 mr-1" />Fraud
               {stats?.fraud?.open_alerts > 0 && (
@@ -380,6 +392,16 @@ function App() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* #30 Batch Upload */}
+          <TabsContent value="batch">
+            <BatchUploadProgress />
+          </TabsContent>
+
+          {/* #28 Vendor Analytics */}
+          <TabsContent value="vendors">
+            <VendorAnalytics />
           </TabsContent>
 
           {/* Fraud */}
