@@ -57,7 +57,9 @@ export function VendorRouteGlobe({ vendors = [], height = 600 }) {
       const routes = vendor.route_patterns || [];
       
       routes.forEach(routeInfo => {
-        const parsed = parseRoute(routeInfo.route);
+        const routeValue = typeof routeInfo === 'string' ? routeInfo : routeInfo?.route;
+        const countValue = typeof routeInfo === 'string' ? 1 : (routeInfo?.count ?? 1);
+        const parsed = parseRoute(routeValue);
         if (!parsed) return;
 
         const startCoords = getCityCoords(parsed.origin);
@@ -71,8 +73,8 @@ export function VendorRouteGlobe({ vendors = [], height = 600 }) {
             endLng: endCoords.lng,
             color: getRiskColor(vendor.risk_score),
             vendor: vendor.vendor_name,
-            route: routeInfo.route,
-            count: routeInfo.count,
+            route: routeValue,
+            count: countValue,
             riskScore: vendor.risk_score
           });
 
@@ -84,7 +86,7 @@ export function VendorRouteGlobe({ vendors = [], height = 600 }) {
     });
 
     // Build points data from unique cities
-    const points = Array.from(citySet).map(city => {
+    let points = Array.from(citySet).map(city => {
       const coords = getCityCoords(city);
       if (!coords) return null;
 
@@ -103,6 +105,23 @@ export function VendorRouteGlobe({ vendors = [], height = 600 }) {
         color: '#60a5fa'
       };
     }).filter(Boolean);
+
+    // Fallback: if no valid routes exist, still show vendor hub points from vendor names.
+    if (points.length === 0) {
+      points = vendors
+        .map(vendor => {
+          const coords = getCityCoords(vendor.vendor_name);
+          if (!coords) return null;
+          return {
+            lat: coords.lat,
+            lng: coords.lng,
+            city: vendor.vendor_name,
+            size: 0.9,
+            color: getRiskColor(vendor.risk_score),
+          };
+        })
+        .filter(Boolean);
+    }
 
     setArcsData(arcs);
     setPointsData(points);
@@ -165,6 +184,11 @@ export function VendorRouteGlobe({ vendors = [], height = 600 }) {
           />
         )}
       </div>
+      {arcsData.length === 0 && pointsData.length > 0 && (
+        <div className="px-4 pt-3 text-xs text-muted-foreground">
+          No route history found for current vendors. Showing vendor hub cities instead.
+        </div>
+      )}
       
       {/* Legend */}
       <div className="p-4 bg-muted/50 border-t flex items-center justify-center gap-6 text-sm">

@@ -3,7 +3,7 @@ import {
   FileText, Upload, LayoutDashboard, ShieldAlert,
   RefreshCw, Wifi, WifiOff, Moon, Sun, BarChart2,
   ChevronLeft, ChevronRight, Sparkles, AlertTriangle,
-  Download, Users, PackageCheck,
+  Download, Users, PackageCheck, ShieldCheck,
 } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
@@ -20,6 +20,7 @@ import { AttentionHeatmap } from './components/AttentionHeatmap'
 import { DashboardCharts } from './components/DashboardCharts'
 import { VendorAnalytics } from './components/VendorAnalytics'
 import { BatchUploadProgress } from './components/BatchUploadProgress'
+import { AdminDemoDashboard } from './components/AdminDemoDashboard'
 import { CardSkeleton, StatsCardSkeleton } from './components/Skeleton'
 import { useDocuments } from './hooks/useDocuments'
 import { useTriplets } from './hooks/useTriplets'
@@ -51,6 +52,7 @@ function App() {
     { key: 'batch', label: 'Batch Upload', icon: PackageCheck },
     { key: 'vendors', label: 'Vendors', icon: Users },
     { key: 'fraud', label: 'Fraud Detection', icon: ShieldAlert },
+    { key: 'admin', label: 'Admin Demo', icon: ShieldCheck },
   ]
 
 
@@ -457,6 +459,11 @@ function App() {
               {/* Fraud */}
               <TabsContent value="fraud">
                 <FraudAlertPanel />
+              </TabsContent>
+
+              {/* Admin demo */}
+              <TabsContent value="admin">
+                <AdminDemoDashboard onRefresh={handleRefresh} />
               </TabsContent>
             </section>
           </div>

@@ -66,6 +66,24 @@ export function VendorAnalytics() {
     return <Badge className="bg-green-600 dark:bg-green-500 text-white">Low</Badge>;
   };
 
+  const getFlags = (profile) => {
+    const flags = [];
+    const total = Number(profile.total_invoices || 0);
+    const avg = Number(profile.avg_amount || 0);
+    const std = Number(profile.std_deviation || 0);
+    const freq = Number(profile.avg_frequency || 0);
+    const fraudRate = Number(profile.historical_fraud_rate || 0);
+    const cv = avg > 0 ? std / avg : 0;
+
+    if (fraudRate > 0) flags.push({ label: 'Fraud history', tone: 'destructive' });
+    if (total > 0 && total < 5) flags.push({ label: 'New vendor', tone: 'warning' });
+    if (total > 0 && freq < 1) flags.push({ label: 'Low frequency', tone: 'warning' });
+    if (cv > 0.3) flags.push({ label: 'High variance', tone: 'warning' });
+    if (Number(profile.risk_score || 0) >= 50) flags.push({ label: 'High risk', tone: 'destructive' });
+
+    return flags.slice(0, 3);
+  };
+
   if (loading) {
     return <div className="p-8 text-center">Loading vendor analytics...</div>;
   }
@@ -235,6 +253,7 @@ export function VendorAnalytics() {
                   <th className="text-right py-3 px-4">Transactions</th>
                   <th className="text-right py-3 px-4">Avg Amount</th>
                   <th className="text-right py-3 px-4">Fraud Rate</th>
+                  <th className="text-left py-3 px-4">Flags</th>
                   <th className="text-center py-3 px-4">Action</th>
                 </tr>
               </thead>
@@ -256,6 +275,22 @@ export function VendorAnalytics() {
                     </td>
                     <td className="text-right py-3 px-4">
                       {(profile.historical_fraud_rate * 100).toFixed(1)}%
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-wrap gap-1">
+                        {getFlags(profile).length === 0 ? (
+                          <Badge variant="outline">Normal</Badge>
+                        ) : (
+                          getFlags(profile).map((flag) => (
+                            <Badge
+                              key={`${profile.vendor_name}-${flag.label}`}
+                              variant={flag.tone === 'destructive' ? 'destructive' : 'secondary'}
+                            >
+                              {flag.label}
+                            </Badge>
+                          ))
+                        )}
+                      </div>
                     </td>
                     <td className="text-center py-3 px-4">
                       <Button
