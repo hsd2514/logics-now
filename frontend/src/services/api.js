@@ -142,6 +142,11 @@ export const nlQuery = async (query, onChunk) => {
 export const nlQuerySync = (query) => api.post('/ai/query/sync', { query })
 export const getAuditTrail = (tripletId) => api.get(`/ai/audit/${tripletId}`)
 
+// Disputes
+export const generateDisputeDraft = (tripletId) => api.post(`/disputes/${tripletId}/draft`)
+export const sendDispute = (tripletId, data) => api.post(`/disputes/${tripletId}/send`, data)
+export const getDisputeHistory = (tripletId) => api.get(`/disputes/${tripletId}/history`)
+
 // Stats
 export const getStats = () => api.get('/stats')
 
