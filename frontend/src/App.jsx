@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import {
   FileText, Upload, LayoutDashboard, ShieldAlert,
   RefreshCw, Wifi, WifiOff, Moon, Sun, BarChart2,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Sparkles, AlertTriangle,
 } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
@@ -31,6 +31,7 @@ function App() {
   const toast = useToast()
   const { isDark, toggle: toggleTheme } = useTheme()
 
+  const [demoLoading,     setDemoLoading]     = useState(false)
   const [activeTab,       setActiveTab]       = useState('dashboard')
   const [stats,           setStats]           = useState(null)
   const [statsLoading,    setStatsLoading]    = useState(false)
@@ -128,6 +129,24 @@ function App() {
   }
 
   // Pagination
+  const handleGenerateDemo = async (anomaly = false) => {
+    setDemoLoading(true)
+    try {
+      const res = await api.generateDemo(anomaly)
+      const d = res.data
+      toast({
+        type: anomaly ? 'warning' : 'success',
+        title: anomaly ? '⚠️ Anomalous Shipment Generated' : '✅ Demo Shipment Generated',
+        description: `${d.shipment_id} — ${d.triplets_created} triplet(s) matched. Refreshing…`,
+      })
+      setTimeout(handleRefresh, 600)
+    } catch (e) {
+      toast({ type: 'error', title: 'Demo generation failed', description: e?.response?.data?.detail || e.message })
+    } finally {
+      setDemoLoading(false)
+    }
+  }
+
   const filteredTriplets = triplets.filter(t => {
     if (filters.status && t.status !== filters.status) return false
     return true
@@ -159,6 +178,29 @@ function App() {
                   : <><WifiOff className="h-3.5 w-3.5 text-red-500"  /><span className="text-red-600">Offline</span></>
                 }
               </div>
+              {/* Demo buttons */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden sm:flex items-center gap-1.5 text-xs h-8 text-green-700 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-950"
+                onClick={() => handleGenerateDemo(false)}
+                disabled={demoLoading}
+                title="Generate a healthy matched shipment"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {demoLoading ? 'Generating…' : 'Demo Shipment'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden sm:flex items-center gap-1.5 text-xs h-8 text-orange-700 border-orange-300 hover:bg-orange-50 dark:text-orange-400 dark:border-orange-700 dark:hover:bg-orange-950"
+                onClick={() => handleGenerateDemo(true)}
+                disabled={demoLoading}
+                title="Generate a suspicious shipment with amount anomaly"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {demoLoading ? 'Generating…' : 'Demo Fraud'}
+              </Button>
               <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={tripletsLoading || statsLoading}>
                 <RefreshCw className={`h-4 w-4 ${(tripletsLoading || statsLoading) ? 'animate-spin' : ''}`} />
               </Button>

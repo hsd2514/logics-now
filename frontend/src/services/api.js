@@ -42,6 +42,9 @@ export const dismissAlert = (id, data) => api.post(`/fraud/alerts/${id}/dismiss`
 export const confirmAlert = (id, data) => api.post(`/fraud/alerts/${id}/confirm`, data)
 export const getPredictiveAlerts = () => api.get('/fraud/predictions')
 
+// Demo
+export const generateDemo = (anomaly = false) => api.post('/demo/generate', null, { params: { anomaly } })
+
 // AI
 export const chatWithDocument = async (documentId, message, onChunk) => {
   const response = await fetch('/api/ai/chat', {
