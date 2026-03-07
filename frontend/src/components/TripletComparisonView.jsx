@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X, CheckCircle2, XCircle, AlertCircle, FileText, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, CheckCircle2, XCircle, AlertCircle, FileText, ChevronDown, ChevronUp, Mail, Send, AlertTriangle, Clock, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -84,6 +84,18 @@ export function TripletComparisonView({ triplet, onClose }) {
   const [invoice, setInvoice] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Dispute modal state
+  const [disputeOpen,    setDisputeOpen]    = useState(false)
+  const [disputeLoading, setDisputeLoading] = useState(false)
+  const [disputeDraft,   setDisputeDraft]   = useState(null)
+  const [disputeError,   setDisputeError]   = useState(null)
+  const [editSubject,    setEditSubject]    = useState('')
+  const [editBody,       setEditBody]       = useState('')
+  const [sending,        setSending]        = useState(false)
+  const [sentOk,         setSentOk]         = useState(false)
+  const [history,        setHistory]        = useState([])
+  const [historyOpen,    setHistoryOpen]    = useState(false)
+
   useEffect(() => {
     async function fetchDocs() {
       setLoading(true)
@@ -103,6 +115,54 @@ export function TripletComparisonView({ triplet, onClose }) {
     fetchDocs()
   }, [triplet])
 
+  // ── Dispute helpers ──────────────────────────────────────────────────
+  async function openDisputeModal() {
+    setDisputeOpen(true)
+    setDisputeLoading(true)
+    setDisputeError(null)
+    setSentOk(false)
+    try {
+      const res = await api.generateDisputeDraft(triplet.id)
+      setDisputeDraft(res.data)
+      setEditSubject(res.data.subject)
+      setEditBody(res.data.body)
+    } catch (err) {
+      const status = err?.response?.status
+      if (status === 204) {
+        setDisputeError('No disputable condition detected — this triplet appears to be clean.')
+      } else {
+        setDisputeError('Failed to generate dispute draft. Please try again.')
+      }
+    } finally {
+      setDisputeLoading(false)
+    }
+  }
+
+  async function handleSendDispute() {
+    setSending(true)
+    try {
+      await api.sendDispute(triplet.id, { subject: editSubject, body: editBody, sent_by: 'finance_user' })
+      setSentOk(true)
+      // Refresh history
+      const h = await api.getDisputeHistory(triplet.id)
+      setHistory(h.data)
+    } catch {
+      setDisputeError('Failed to record dispute. Please try again.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function openHistory() {
+    setHistoryOpen(true)
+    try {
+      const h = await api.getDisputeHistory(triplet.id)
+      setHistory(h.data)
+    } catch { /* silent */ }
+  }
+
+  const SEVERITY_COLOR = { HIGH: 'text-red-600', MEDIUM: 'text-yellow-600', LOW: 'text-green-600' }
+
   const fieldMatches = triplet.field_matches || {}
   const lrEnt      = lr?.entities      || {}
   const podEnt     = pod?.entities     || {}
@@ -113,6 +173,9 @@ export function TripletComparisonView({ triplet, onClose }) {
     ...Object.keys(podEnt),
     ...Object.keys(invoiceEnt),
   ])).filter(f => FIELD_LABELS[f])
+
+  // Show "Draft Dispute" button when match is low
+  const showDisputeBtn = (triplet.match_score || 1) < 0.85
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -127,9 +190,31 @@ export function TripletComparisonView({ triplet, onClose }) {
               Match Score: <span className="font-semibold">{Math.round(triplet.match_score * 100)}%</span>
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {showDisputeBtn && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950 gap-1.5"
+                  onClick={openHistory}
+                >
+                  <Clock className="h-4 w-4" /> History
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-950 gap-1.5"
+                  onClick={openDisputeModal}
+                >
+                  <Mail className="h-4 w-4" /> Draft Dispute
+                </Button>
+              </>
+            )}
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         <div className="overflow-y-auto flex-1 p-6 space-y-6">
@@ -246,6 +331,161 @@ export function TripletComparisonView({ triplet, onClose }) {
           )}
         </div>
       </div>
+
+      {/* ── Dispute Draft Modal ──────────────────────────────────── */}
+      {disputeOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-background rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                <h3 className="text-base font-bold">AI Dispute Resolution Agent</h3>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => { setDisputeOpen(false); setSentOk(false) }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-6 space-y-4">
+              {disputeLoading && (
+                <div className="flex items-center justify-center py-12 text-muted-foreground gap-3">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  Analysing discrepancies…
+                </div>
+              )}
+
+              {disputeError && !disputeLoading && (
+                <div className="rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-4 text-sm text-amber-800 dark:text-amber-200">
+                  {disputeError}
+                </div>
+              )}
+
+              {sentOk && (
+                <div className="rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-4 flex items-center gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-green-800 dark:text-green-200">Dispute recorded successfully.</p>
+                    <p className="text-xs text-green-700 dark:text-green-300">Audit log entry created. Send the email via your email client.</p>
+                  </div>
+                </div>
+              )}
+
+              {disputeDraft && !disputeLoading && (
+                <>
+                  {/* Scenario badge */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className={`${SEVERITY_COLOR[disputeDraft.severity]} border-current`}>
+                      {disputeDraft.severity} Severity
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {disputeDraft.scenario.replace(/_/g, ' ')}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground ml-auto">{disputeDraft.generated_at?.slice(0, 19).replace('T', ' ')} UTC</span>
+                  </div>
+
+                  {/* Discrepancies summary */}
+                  {disputeDraft.discrepancies?.length > 0 && (
+                    <div className="rounded-lg border bg-muted/40 p-3 space-y-1">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Detected Discrepancies</p>
+                      {disputeDraft.discrepancies.map((d, i) => (
+                        <div key={i} className="text-xs grid grid-cols-4 gap-2">
+                          <span className="font-medium text-muted-foreground">{d.field}</span>
+                          <span>LR: <span className="font-mono">{String(d.lr_val ?? '–')}</span></span>
+                          <span>POD: <span className="font-mono">{String(d.pod_val ?? '–')}</span></span>
+                          <span>INV: <span className="font-mono">{String(d.inv_val ?? '–')}</span>
+                            {d.variance_pct ? <span className="text-red-500 ml-1">({d.variance_pct}%)</span> : null}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Recommended action */}
+                  <div className="text-xs text-muted-foreground italic">
+                    <span className="font-semibold not-italic">Recommended action: </span>
+                    {disputeDraft.recommended_action}
+                  </div>
+
+                  {/* Editable subject */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Subject</label>
+                    <input
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={editSubject}
+                      onChange={e => setEditSubject(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Editable body */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Email Body</label>
+                    <textarea
+                      rows={14}
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                      value={editBody}
+                      onChange={e => setEditBody(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer actions */}
+            {disputeDraft && !disputeLoading && (
+              <div className="px-6 py-4 border-t flex items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">Edit the draft above, then click Send to record it in the audit trail.</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => { setDisputeOpen(false); setSentOk(false) }}>Cancel</Button>
+                  <Button
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={sending || sentOk}
+                    onClick={handleSendDispute}
+                  >
+                    {sending
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Recording…</>
+                      : sentOk
+                        ? <><CheckCircle2 className="h-4 w-4" /> Recorded</>
+                        : <><Send className="h-4 w-4" /> Approve &amp; Send</>
+                    }
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Dispute History Modal ────────────────────────────────── */}
+      {historyOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-background rounded-xl shadow-2xl w-full max-w-xl max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h3 className="text-base font-bold flex items-center gap-2">
+                <Clock className="h-4 w-4" /> Dispute History
+              </h3>
+              <Button variant="ghost" size="icon" onClick={() => setHistoryOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4 space-y-3">
+              {history.length === 0
+                ? <p className="text-sm text-muted-foreground text-center py-8">No disputes recorded for this triplet.</p>
+                : history.map(h => (
+                  <div key={h.id} className="rounded-lg border p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs">{h.context?.scenario || 'DISPUTE'}</Badge>
+                      <span className="text-xs text-muted-foreground">{h.timestamp?.slice(0, 19).replace('T', ' ')} UTC</span>
+                    </div>
+                    <p className="text-xs font-medium">{h.context?.subject}</p>
+                    <p className="text-xs text-muted-foreground">{h.ai_generated}</p>
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.routes import documents, triplets, fraud, ai, stats, demo, vendors
+from app.routes import documents, triplets, fraud, ai, stats, demo, vendors, disputes
 
 api_router = APIRouter()
 
@@ -11,3 +11,4 @@ api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 api_router.include_router(stats.router, prefix="/stats", tags=["stats"])
 api_router.include_router(demo.router, prefix="/demo", tags=["demo"])
 api_router.include_router(vendors.router, prefix="/vendors", tags=["vendors"])
+api_router.include_router(disputes.router, prefix="/disputes", tags=["disputes"])
