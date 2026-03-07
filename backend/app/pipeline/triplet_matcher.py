@@ -200,29 +200,54 @@ class TripletMatcher:
         self, field: str, match_info: Dict,
         lr_blocks: List[Dict], pod_blocks: List[Dict], invoice_blocks: List[Dict]
     ) -> List[Dict]:
-        """Build attention regions for heatmap visualization."""
+        """Build attention regions with normalised coordinates for heatmap."""
         regions = []
         score = match_info['score']
-        
+
         for doc_type, blocks, value in [
             ('LR', lr_blocks, match_info['values'].get('lr')),
             ('POD', pod_blocks, match_info['values'].get('pod')),
             ('INVOICE', invoice_blocks, match_info['values'].get('invoice'))
         ]:
-            if blocks and value:
-                position = self._find_value_position(str(value), blocks)
-                if position:
-                    regions.append({
-                        'document_type': doc_type,
-                        'field': field,
-                        'x': position[0],
-                        'y': position[1],
-                        'width': position[2],
-                        'height': position[3],
-                        'score': score
-                    })
-        
+            if not (blocks and value):
+                continue
+
+            position = self._find_value_position(str(value), blocks)
+            if not position:
+                continue
+
+            px, py, pw, ph = position
+
+            # Compute real document bounding box from all text blocks
+            doc_w, doc_h = self._compute_doc_dimensions(blocks)
+
+            # Normalise to [0, 1] — safe even if doc_w/h are 0
+            x_norm = (px / doc_w) if doc_w > 0 else 0.0
+            y_norm = (py / doc_h) if doc_h > 0 else 0.0
+            w_norm = (pw / doc_w) if doc_w > 0 else 0.0
+            h_norm = (ph / doc_h) if doc_h > 0 else 0.0
+
+            regions.append({
+                'document_type': doc_type,
+                'field': field,
+                # Raw pixel coords (kept for debugging)
+                'x': px,
+                'y': py,
+                'width': pw,
+                'height': ph,
+                # Real document dimensions
+                'doc_width': doc_w,
+                'doc_height': doc_h,
+                # Normalised coords — use these in the frontend
+                'x_norm': round(x_norm, 4),
+                'y_norm': round(y_norm, 4),
+                'w_norm': round(max(w_norm, 0.02), 4),  # min 2% so tiny words visible
+                'h_norm': round(max(h_norm, 0.02), 4),
+                'score': score,
+            })
+
         return regions
+
     
     def _find_value_position(self, value: str, blocks: List[Dict]) -> Optional[Tuple]:
         """Find position of value in text blocks."""
@@ -231,7 +256,15 @@ class TripletMatcher:
             if value_lower in block.get('text', '').lower():
                 return (block['x'], block['y'], block['width'], block['height'])
         return None
-    
+
+    def _compute_doc_dimensions(self, blocks: List[Dict]) -> Tuple[float, float]:
+        """Compute document canvas size from the bounding box of all OCR text blocks."""
+        if not blocks:
+            return 0.0, 0.0
+        max_x = max((b['x'] + b.get('width', 0)) for b in blocks)
+        max_y = max((b['y'] + b.get('height', 0)) for b in blocks)
+        return float(max_x), float(max_y)
+
     def find_best_matches(
         self, 
         lr_docs: List[Dict], 
