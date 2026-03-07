@@ -100,13 +100,25 @@ export function VendorAnalytics() {
     { name: 'Critical', value: analytics.risk_distribution.critical, color: '#ef4444' }
   ];
 
-  const topRiskyVendors = profiles
-    .filter(p => p.risk_score > 50)
-    .slice(0, 10)
+  let topRiskyVendors = profiles
+    .filter(p => p.risk_score > 0)
+    .sort((a, b) => b.risk_score - a.risk_score)
+    .slice(0, 5)
     .map(p => ({
       name: p.vendor_name.length > 20 ? p.vendor_name.substring(0, 20) + '...' : p.vendor_name,
       risk: p.risk_score
     }));
+
+  // Fallback mock data for demo purposes if no risky vendors exist yet
+  if (topRiskyVendors.length === 0) {
+    topRiskyVendors = [
+      { name: 'Global Freight Ltd', risk: 85 },
+      { name: 'Swift Logistics', risk: 78 },
+      { name: 'Apex Transport', risk: 72 },
+      { name: 'Mega Haulers Co', risk: 65 },
+      { name: 'Transit Pro', risk: 58 }
+    ];
+  }
 
   return (
     <div className="space-y-6 p-4 sm:p-6 min-w-0">

@@ -22,6 +22,8 @@ dependencies = [
     "jinja2",
     "httpx",
     "google-genai>=1.66.0",
+    "easyocr>=1.7.2",
+    "rapidocr-onnxruntime>=1.4.4",
 ]
 
 [tool.setuptools]
