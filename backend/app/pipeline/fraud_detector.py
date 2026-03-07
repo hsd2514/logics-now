@@ -110,7 +110,16 @@ class FraudDetector:
         return None
     
     def _check_amount_anomaly(self, triplet: Dict, vendor_profile: Optional[Dict]) -> Optional[FraudAlert]:
-        """Check for unusual invoice amounts."""
+        """
+        Detects significant deviations between the invoice amount and vendor or LR benchmarks.
+        
+        Parameters:
+            triplet (Dict): Triplet data containing 'invoice_entities' and 'lr_entities' from which amounts are read.
+            vendor_profile (Optional[Dict]): Vendor statistics (expected keys: 'avg_amount', 'std_deviation') used for statistical comparison; may be None.
+        
+        Returns:
+            FraudAlert or None: A FraudAlert when the invoice amount is unusually different from the vendor's historical distribution (high z-score) or differs from the LR amount by more than the configured variance threshold; otherwise None. The returned alert's risk_score is derived from the magnitude of the deviation and capped by configured maximums.
+        """
         invoice_amount = triplet.get('invoice_entities', {}).get('amount', 0)
         lr_amount = triplet.get('lr_entities', {}).get('amount', 0)
         
@@ -165,7 +174,18 @@ class FraudDetector:
     def _check_frequency_anomaly(
         self, triplet: Dict, vendor_profile: Optional[Dict], historical: List[Dict]
     ) -> Optional[FraudAlert]:
-        """Check for unusual invoice frequency."""
+        """
+        Detects unusually high invoice frequency for the vendor in the given triplet using recent historical invoices and the vendor's profile.
+        
+        Parameters:
+            triplet (Dict): Invoice triplet containing at least 'invoice_entities' -> 'party_name'.
+            vendor_profile (Optional[Dict]): Vendor profile dictionary; expects 'avg_frequency' (monthly average invoices).
+            historical (List[Dict]): List of past invoice triplets with 'invoice_entities' and 'created_at' timestamps.
+        
+        Returns:
+            Optional[FraudAlert]: A VENDOR_ANOMALY FraudAlert when the count of invoices from the vendor in the last 7 days exceeds
+            the vendor's expected weekly frequency multiplied by the configured threshold; otherwise `None`.
+        """
         if not vendor_profile or not historical:
             return None
         
@@ -206,7 +226,21 @@ class FraudDetector:
         return None
     
     def _check_predictive_patterns(self, triplet: Dict, vendor_profile: Dict) -> Optional[FraudAlert]:
-        """Novel: Predictive fraud detection based on learned vendor patterns."""
+        """
+        Detect deviations from a vendor's learned patterns and produce a predictive fraud alert when one or more suspicious signals are observed.
+        
+        Performs three checks and aggregates their signals:
+        - Route deviation: flags a new origin-destination route when the vendor has at least three historical invoices.
+        - Round-amount heuristic: flags unusually round invoice amounts using configured minimum and step thresholds.
+        - Historical fraud rate: flags vendors whose stored fraud rate exceeds the configured high-fraud threshold.
+        
+        Parameters:
+            triplet (Dict): The invoice/triplet record; expects an 'invoice_entities' mapping containing at least 'origin', 'destination', and 'amount'.
+            vendor_profile (Dict): Vendor profile data; expected keys include 'route_patterns' (list of route strings), 'total_invoices' (int), and 'historical_fraud_rate' (float, may be None).
+        
+        Returns:
+            Optional[FraudAlert]: A FraudAlert when one or more predictive signals are present. The alert's `risk_score` is the maximum of detected signal factors, `details` includes the triggered reasons and the vendor fraud rate, and `reasoning` summarizes the reasons. Returns `None` if no predictive signals are found.
+        """
         alerts_reasons = []
         risk_factors = []
         

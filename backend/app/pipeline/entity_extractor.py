@@ -14,6 +14,11 @@ class EntityExtractor:
     """Stage 3: Extract entities from OCR text - SHIPMENT_ID, AMOUNT, DATE, etc."""
     
     def __init__(self):
+        """
+        Initialize the extractor's regular-expression patterns for supported entity types.
+        
+        Creates self.patterns, a dictionary that maps entity keys to lists of regexes; each regex is authored to capture the entity value in the first capturing group and to tolerate common label variants, punctuation, spacing, and typical format variations. Supported entity keys include: shipment_id, amount, date, vehicle_number, gst_number, party_name, weight, origin, and destination.
+        """
         self.patterns = {
             'shipment_id': [
                 # Allow intermediate words like 'Number', 'No', 'Ref', 'ID' between label and value

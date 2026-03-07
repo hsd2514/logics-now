@@ -34,7 +34,14 @@ class NLQueryParser:
         self.client = genai.Client(api_key=settings.google_api_key) if settings.google_api_key else None
 
     def parse(self, query: str) -> Dict:
-        """Parse natural language query into filters."""
+        """
+        Convert a natural language query into a structured filter dictionary.
+        
+        Uses the configured AI model to produce JSON-aligned filters when available; falls back to the internal parser if no AI client is configured or if AI parsing fails.
+        
+        Returns:
+            dict: A dictionary of extracted filter fields (e.g., amount_min, date_from, status, vendor_name) or `{'error': <message>}` when parsing cannot produce filters.
+        """
         if not self.client:
             return self._fallback_parse(query)
 
@@ -55,7 +62,14 @@ class NLQueryParser:
             return {"error": str(e)}
 
     async def parse_stream(self, query: str) -> AsyncGenerator[str, None]:
-        """Stream the parsing process for UI feedback."""
+        """
+        Stream incremental parsing output as UTF-8 JSON/text fragments for UI feedback.
+        
+        When an AI client is available, yields text chunks produced by the model's streaming API. If no AI client is configured, yields a single JSON-encoded string containing the fallback parse result. If an error occurs, yields a single JSON-encoded string in the form `{"error": "<message>"}`.
+        
+        Returns:
+        	Yields strings that are either partial model text chunks or a single JSON-encoded result/error.
+        """
         if not self.client:
             yield json.dumps(self._fallback_parse(query))
             return

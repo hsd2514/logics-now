@@ -20,7 +20,20 @@ class VendorPatternLearner:
         invoice_data: Dict,
         route: Optional[tuple] = None
     ):
-        """Update vendor profile with new invoice data."""
+        """
+        Update or create a VendorProfile with data from a new invoice and persist the changes.
+        
+        Updates per-invoice statistics (average, standard deviation, min/max, and total count) using a numerically stable incremental method, appends a normalized origin-destination route to the profile's route patterns (capped at 20 entries) when provided, refreshes frequency-related metrics, sets the last invoice timestamp, commits the session, and returns the persisted profile.
+        
+        Parameters:
+            db (Session): Active SQLAlchemy session used to query and commit the profile.
+            vendor_name (str): Exact vendor identifier used to locate or create the profile.
+            invoice_data (Dict): Invoice payload; the `amount` key is read (defaults to 0) and used to update statistics.
+            route (Optional[tuple]): Optional (origin, destination) pair; when provided it's normalized to "origin-destination" (lowercase) and added to route patterns.
+        
+        Returns:
+            VendorProfile: The created or updated VendorProfile instance as persisted to the database.
+        """
         from app.models.vendor_profile import VendorProfile
         
         # Get or create vendor profile
@@ -90,7 +103,21 @@ class VendorPatternLearner:
             profile.avg_frequency = profile.total_invoices / (days_active / 30)
     
     def calculate_risk_score(self, profile, new_invoice: Dict) -> float:
-        """Calculate risk score for a new invoice against vendor profile."""
+        """
+        Compute a fraud risk score for a new invoice against a vendor's historical profile.
+        
+        Considers three factors: deviation of the invoice amount from the vendor's average (z-score, small contribution when z > 3, capped per-invoice), whether the invoice route (origin-destination) is unseen for the vendor (fixed contribution), and the vendor's historical fraud rate (added when above a threshold). Returns 0.0 when the profile is missing or the vendor does not have enough historical invoices.
+        
+        Parameters:
+            profile: Vendor profile object with at least the attributes `total_invoices`, `avg_amount`, `std_deviation`, `route_patterns`, and `historical_fraud_rate`.
+            new_invoice (dict): Invoice data; relevant keys are:
+                - 'amount' (numeric): invoice amount
+                - 'origin' (str): origin identifier
+                - 'destination' (str): destination identifier
+        
+        Returns:
+            float: A risk score where 0.0 indicates no detected risk and larger values indicate greater risk (individual factor contributions include a capped amount deviation, a fixed route anomaly contribution, or the historical fraud rate).
+        """
         if not profile or profile.total_invoices < settings.vendor_min_invoices_for_risk:
             return 0.0  # Not enough data
         
@@ -144,7 +171,17 @@ class VendorPatternLearner:
         return alerts
     
     def _generate_risk_reasoning(self, profile) -> str:
-        """Generate human-readable risk reasoning."""
+        """
+        Produce a concise, human-readable explanation for why a vendor's risk score is elevated.
+        
+        Checks the vendor profile for high historical fraud rate, high invoice amount variability (coefficient of variation), and high invoice frequency; collects matching reasons into a semicolon-separated string.
+        
+        Parameters:
+            profile: VendorProfile-like object containing attributes `historical_fraud_rate`, `avg_amount`, `std_deviation`, and `avg_frequency`.
+        
+        Returns:
+            A semicolon-separated string of detected risk reasons, or "Elevated risk based on pattern analysis" if no specific reasons are found.
+        """
         reasons = []
         
         fraud_rate = profile.historical_fraud_rate or 0.0

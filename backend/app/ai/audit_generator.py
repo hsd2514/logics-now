@@ -27,7 +27,22 @@ class AuditGenerator:
         validation_results: List[Dict],
         decision: str
     ) -> str:
-        """Generate AI explanation for a triplet match decision."""
+        """
+        Compose an audit explanation for a LR/POD/Invoice match decision.
+        
+        This will use the configured AI client to generate a concise, professional audit explanation that summarizes shipment identifiers, amounts, dates, match score, decision, and validation results; if the AI client is unavailable or fails, a deterministic fallback explanation is returned.
+        
+        Parameters:
+            lr_entities (Dict): Locator record fields (e.g., 'shipment_id', 'amount', 'date').
+            pod_entities (Dict): Proof-of-delivery fields (e.g., 'shipment_id', 'amount', 'date').
+            invoice_entities (Dict): Invoice fields (e.g., 'shipment_id', 'amount', 'date').
+            match_score (float): Match confidence between 0.0 and 1.0.
+            validation_results (List[Dict]): Validation entries with keys like 'passed', 'rule', and 'message'.
+            decision (str): Match decision label (e.g., "AUTO_APPROVED", "APPROVED", "REJECTED").
+        
+        Returns:
+            str: A human-readable audit explanation describing the match decision, relevant identifiers and amounts, summarized validation outcomes, and any notable variance or reviewer context.
+        """
         if not self.client:
             return self._generate_fallback(
                 lr_entities, pod_entities, invoice_entities,
@@ -73,7 +88,17 @@ Generate a professional audit explanation for this {decision} decision."""
         risk_score: float,
         details: Dict
     ) -> str:
-        """Generate AI explanation for a fraud alert."""
+        """
+        Create a concise explanation of a fraud alert suitable for the compliance team.
+        
+        Parameters:
+            alert_type (str): Category or label describing the type of fraud alert.
+            risk_score (float): Risk as a value between 0.0 and 1.0 (e.g., 0.85 for 85%).
+            details (Dict): Additional alert-specific data useful for context (keys and values vary by alert).
+        
+        Returns:
+            str: A human-readable explanation of the alert; falls back to a non-AI explanation if the AI client is unavailable or generation fails.
+        """
         if not self.client:
             return self._generate_fraud_fallback(alert_type, risk_score, details)
 
