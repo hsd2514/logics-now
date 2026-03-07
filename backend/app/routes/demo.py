@@ -208,8 +208,13 @@ async def generate_demo(
     pod_doc = await _create_and_process(db, pod_id, pod_path, f"POD_{d['pod_no']}.html", "POD")
     inv_doc = await _create_and_process(db, inv_id, inv_path, f"INV_{d['inv_no']}.html", "INVOICE")
 
-    # Run matching
     triplets, events = matching_service.match_documents(db)
+    flat_triplets = []
+    for item in triplets:
+        if isinstance(item, list):
+            flat_triplets.extend(item)
+        else:
+            flat_triplets.append(item)
 
     return {
         "message": f"Demo documents created and {'anomalous ' if anomaly else ''}triplet matched.",
@@ -219,6 +224,7 @@ async def generate_demo(
             "pod":     {"id": pod_doc.id, "entities": pod_doc.entities},
             "invoice": {"id": inv_doc.id, "entities": inv_doc.entities},
         },
-        "triplets_created": len(triplets),
-        "triplet_ids": [t.id for t in triplets],
+        "triplets_created": len(flat_triplets),
+        "triplet_ids": [t.id for t in flat_triplets if hasattr(t, "id")],
+        "events_emitted": len(events),
     }

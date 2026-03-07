@@ -1,5 +1,5 @@
 import React from 'react'
-import { FileText, CheckCircle, AlertTriangle, Clock, TrendingUp, Zap } from 'lucide-react'
+import { FileText, CheckCircle, AlertTriangle, Clock, TrendingUp, Zap, Timer } from 'lucide-react'
 import { Card, CardContent } from './ui/card'
 
 export function StatsCards({ stats }) {
@@ -46,14 +46,23 @@ export function StatsCards({ stats }) {
       color: 'text-indigo-500',
       bg: 'bg-indigo-50',
     },
+    {
+      title: 'Avg Proc Time',
+      value: `${(((stats?.efficiency?.avg_processing_time_ms || 0) / 1000).toFixed(2))}s`,
+      icon: Timer,
+      color: 'text-teal-500',
+      bg: 'bg-teal-50',
+    },
   ]
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
       {cards.map((card, idx) => {
         const Icon = card.icon
+        const isFraudCard = card.title === 'Fraud Alerts'
+        const fraudCount = Number(stats?.fraud?.open_alerts || 0)
         return (
-          <Card key={idx}>
+          <Card key={idx} className={isFraudCard && fraudCount > 0 ? 'ring-1 ring-red-300 animate-pulse' : ''}>
             <CardContent className="pt-4">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${card.bg}`}>

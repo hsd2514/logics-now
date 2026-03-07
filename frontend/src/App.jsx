@@ -3,11 +3,11 @@ import {
   FileText, Upload, LayoutDashboard, ShieldAlert,
   RefreshCw, Wifi, WifiOff, Moon, Sun, BarChart2,
   ChevronLeft, ChevronRight, Sparkles, AlertTriangle,
-  Users, PackageCheck,
+  Download, Users, PackageCheck,
 } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs'
+import { Tabs, TabsContent } from './components/ui/tabs'
 import { Badge } from './components/ui/badge'
 import { DocumentUpload } from './components/DocumentUpload'
 import { TripletCard } from './components/TripletCard'
@@ -44,7 +44,14 @@ function App() {
   const [filters,         setFilters]         = useState({})
   const [page,            setPage]            = useState(1)
   const [fraudAlerts,     setFraudAlerts]     = useState([])
-  const [showBatchUpload, setShowBatchUpload] = useState(false)
+  const navItems = [
+    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { key: 'charts', label: 'Analytics', icon: BarChart2 },
+    { key: 'upload', label: 'Documents', icon: Upload },
+    { key: 'batch', label: 'Batch Upload', icon: PackageCheck },
+    { key: 'vendors', label: 'Vendors', icon: Users },
+    { key: 'fraud', label: 'Fraud Detection', icon: ShieldAlert },
+  ]
 
   const { documents, fetchDocuments, uploadDocument, loading: docsLoading, error: docsError } = useDocuments()
   const { triplets, stats: tripletStats, fetchTriplets, runMatching, approveTriplet, rejectTriplet, loading: tripletsLoading, error: tripletsError } = useTriplets()
@@ -132,6 +139,35 @@ function App() {
     toast({ type: 'info', title: 'Refreshed' })
   }
 
+  const downloadBlob = (blob, fileName) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportTriplets = async (format = 'csv') => {
+    try {
+      const res = await api.exportTriplets(format)
+      downloadBlob(res.data, `triplets_export.${format}`)
+      toast({ type: 'success', title: `Triplets ${format.toUpperCase()} exported` })
+    } catch (e) {
+      toast({ type: 'error', title: 'Triplet export failed', description: e.message })
+    }
+  }
+
+  const handleExportAudit = async (tripletId, format = 'pdf') => {
+    try {
+      const res = await api.exportTripletAudit(tripletId, format)
+      downloadBlob(res.data, `triplet_audit_${tripletId.slice(0, 8)}.${format}`)
+      toast({ type: 'success', title: `Audit ${format.toUpperCase()} exported` })
+    } catch (e) {
+      toast({ type: 'error', title: 'Audit export failed', description: e.message })
+    }
+  }
+
   // Pagination
   const handleGenerateDemo = async (anomaly = false) => {
     setDemoLoading(true)
@@ -167,13 +203,14 @@ function App() {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary rounded-lg">
-                <FileText className="h-5 w-5 text-primary-foreground" />
+              <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 via-red-500 to-yellow-500 shadow-sm">
+                <FileText className="h-5 w-5 text-white" />
               </div>
               <div>
                 <h1 className="text-lg font-bold leading-none">FreightIQ</h1>
-                <p className="text-[11px] text-muted-foreground">AI Document Intelligence</p>
+                <p className="text-[11px] text-muted-foreground">Team Up Up & Debug · LogisticsNow Hackathon 2026</p>
               </div>
+              <Badge className="hidden md:inline-flex bg-amber-100 text-amber-800 border border-amber-300">Hackathon Demo</Badge>
             </div>
             <div className="flex items-center gap-2">
               <div className="hidden sm:flex items-center gap-1.5 text-xs">
@@ -235,32 +272,41 @@ function App() {
         </div>
 
         <Tabs value={activeTab} onValueChange={t => { setActiveTab(t); setPage(1) }}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="dashboard">
-              <LayoutDashboard className="h-4 w-4 mr-1" />Dashboard
-            </TabsTrigger>
-            {/* #22 Charts tab */}
-            <TabsTrigger value="charts">
-              <BarChart2 className="h-4 w-4 mr-1" />Charts
-            </TabsTrigger>
-            <TabsTrigger value="upload">
-              <Upload className="h-4 w-4 mr-1" />Upload
-            </TabsTrigger>
-            {/* #30 Batch Upload tab */}
-            <TabsTrigger value="batch">
-              <PackageCheck className="h-4 w-4 mr-1" />Batch Upload
-            </TabsTrigger>
-            {/* #28 Vendors tab */}
-            <TabsTrigger value="vendors">
-              <Users className="h-4 w-4 mr-1" />Vendors
-            </TabsTrigger>
-            <TabsTrigger value="fraud">
-              <ShieldAlert className="h-4 w-4 mr-1" />Fraud
-              {stats?.fraud?.open_alerts > 0 && (
-                <Badge variant="destructive" className="ml-1.5 py-0 px-1.5 text-[10px]">{stats.fraud.open_alerts}</Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+          <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
+            <aside className="rounded-xl border bg-card p-3 h-fit lg:sticky lg:top-20">
+              <div className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Navigation</div>
+              <div className="space-y-1">
+                {navItems.map(item => {
+                  const Icon = item.icon
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={() => setActiveTab(item.key)}
+                      className={`w-full flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${
+                        activeTab === item.key ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </span>
+                      {item.key === 'fraud' && (stats?.fraud?.open_alerts || 0) > 0 && (
+                        <span className="text-[10px] rounded px-1.5 py-0.5 bg-red-500 text-white">{stats.fraud.open_alerts}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="mt-4 pt-4 border-t space-y-2">
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => handleExportTriplets('csv')}>
+                  <Download className="h-4 w-4 mr-2" /> Export Triplets CSV
+                </Button>
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => handleExportTriplets('pdf')}>
+                  <Download className="h-4 w-4 mr-2" /> Export Triplets PDF
+                </Button>
+              </div>
+            </aside>
+            <section>
 
           {/* Dashboard */}
           <TabsContent value="dashboard">
@@ -302,6 +348,7 @@ function App() {
                           onReject={handleReject}
                           onViewDetails={t => { setSelectedTriplet(t); setCompareTriplet(t) }}
                           onChat={() => setChatDocument({ id: triplet.lr_id, name: 'LR Document' })}
+                          onExportAudit={(t) => handleExportAudit(t.id, 'pdf')}
                         />
                       ))}
                     </div>
@@ -384,6 +431,9 @@ function App() {
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <Badge variant="outline" className="text-xs">{doc.type}</Badge>
                             <Badge variant={doc.status === 'PROCESSED' ? 'success' : 'secondary'} className="text-xs">{doc.status}</Badge>
+                            {doc.processing_time_ms?.total ? (
+                              <Badge variant="outline" className="text-xs">{(doc.processing_time_ms.total / 1000).toFixed(2)}s</Badge>
+                            ) : null}
                           </div>
                         </div>
                       ))}
@@ -408,6 +458,8 @@ function App() {
           <TabsContent value="fraud">
             <FraudAlertPanel />
           </TabsContent>
+            </section>
+          </div>
         </Tabs>
       </main>
 

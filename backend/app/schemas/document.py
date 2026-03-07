@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 class TextBlock(BaseModel):
@@ -36,6 +36,7 @@ class DocumentResponse(BaseModel):
     ocr_text: Optional[str] = None
     ocr_confidence: Optional[float] = None
     entities: Optional[EntityExtraction] = None
+    processing_time_ms: Optional[Dict[str, float]] = None
     status: str
     
     class Config:

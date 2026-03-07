@@ -24,14 +24,42 @@ export const uploadBatch = async (files, docType) => {
   })
 }
 
+export const uploadBatchArchive = async (archiveFile, docType = null) => {
+  const formData = new FormData()
+  formData.append('archive', archiveFile)
+  const suffix = docType ? `?doc_type=${encodeURIComponent(docType)}` : ''
+  return api.post(`/documents/batch-upload${suffix}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
 export const getDocuments = (params) => api.get('/documents', { params })
 export const getDocument = (id) => api.get(`/documents/${id}`)
 export const deleteDocument = (id) => api.delete(`/documents/${id}`)
 
-// Triplets
+// Triplets — all NL-query filter fields forwarded as query params
+export const getTriplets = (params = {}) => {
+  // Map frontend filter keys to the param names the backend expects
+  const query = {}
+  if (params.status)      query.status      = params.status
+  if (params.vendor_name) query.vendor_name = params.vendor_name
+  if (params.amount_min != null) query.amount_min = params.amount_min
+  if (params.amount_max != null) query.amount_max = params.amount_max
+  if (params.date_from)   query.date_from   = params.date_from
+  if (params.date_to)     query.date_to     = params.date_to
+  if (params.fraud_risk)  query.fraud_risk  = params.fraud_risk
+  if (params.document_type) query.document_type = params.document_type
+  if (params.route_origin) query.route_origin = params.route_origin
+  if (params.route_destination) query.route_destination = params.route_destination
+  if (params.skip  != null) query.skip  = params.skip
+  if (params.limit != null) query.limit = params.limit
+  return api.get('/triplets', { params: query })
+}
 export const runMatching = () => api.post('/triplets/match')
-export const getTriplets = (params) => api.get('/triplets', { params })
 export const getTriplet = (id) => api.get(`/triplets/${id}`)
+export const exportTriplets = (format = 'csv') => api.get(`/triplets/export?format=${format}`, { responseType: 'blob' })
+export const exportTripletAudit = (id, format = 'pdf') =>
+  api.get(`/triplets/${id}/audit-export?format=${format}`, { responseType: 'blob' })
 export const approveTriplet = (id, data) => api.post(`/triplets/${id}/approve`, data)
 export const rejectTriplet = (id, data) => api.post(`/triplets/${id}/reject`, data)
 
@@ -41,6 +69,7 @@ export const getFraudAlert = (id) => api.get(`/fraud/alerts/${id}`)
 export const dismissAlert = (id, data) => api.post(`/fraud/alerts/${id}/dismiss`, data)
 export const confirmAlert = (id, data) => api.post(`/fraud/alerts/${id}/confirm`, data)
 export const getPredictiveAlerts = () => api.get('/fraud/predictions')
+export const exportFraudAlerts = (format = 'csv') => api.get(`/fraud/export?format=${format}`, { responseType: 'blob' })
 
 // Demo
 export const generateDemo = (anomaly = false) => api.post('/demo/generate', null, { params: { anomaly } })
