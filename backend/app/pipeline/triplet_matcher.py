@@ -4,7 +4,7 @@ import numpy as np
 from difflib import SequenceMatcher
 
 from app.config import get_settings
-from app.pipeline.embedding_service import EmbeddingService
+from app.services.embedding_service import EmbeddingService
 from app.pipeline.contrastive_learner import ContrastiveLearner
 from app.pipeline.graph_attention import GraphAttentionScorer
 
@@ -31,15 +31,16 @@ class TripletMatcher:
         self.field_weights = {
             'shipment_id': 0.30,
             'amount': 0.20,
-            'date': 0.12,
-            'party_name': 0.10,
-            'origin': 0.05,
-            'destination': 0.05,
-            'vehicle_number': 0.03,
-            'embedding_similarity': 0.15,
+            'date': 0.13,
+            'party_name': 0.09,
+            'origin': 0.04,
+            'destination': 0.04,
+            'vehicle_number': 0.05,
         }
         self.embedding_service = EmbeddingService()
         self.contrastive_learner = ContrastiveLearner()
+        # Backward-compatible attribute expected by issue-14 tests.
+        self.embedding_weight = 0.15
     
     def match_triplet(
         self, 
@@ -64,8 +65,6 @@ class TripletMatcher:
         weighted_score = 0
         
         for field, weight in self.field_weights.items():
-            if field == 'embedding_similarity':
-                continue
             lr_val = lr_entities.get(field)
             pod_val = pod_entities.get(field)
             inv_val = invoice_entities.get(field)
@@ -92,8 +91,10 @@ class TripletMatcher:
             'matched': embedding_similarity > 0.6,
             'values': {'lr': embedding_similarity, 'pod': embedding_similarity, 'invoice': embedding_similarity}
         }
-        weighted_score += self.field_weights['embedding_similarity'] * contrastive_score
-        total_weight += self.field_weights['embedding_similarity']
+        # Backward-compatible key expected by older tests.
+        field_matches['_embedding_similarity'] = field_matches['embedding_similarity']
+        weighted_score += self.embedding_weight * contrastive_score
+        total_weight += self.embedding_weight
         
         match_score = weighted_score / total_weight if total_weight > 0 else 0
         # Blend GAT-style graph score with field/contrastive score
@@ -111,7 +112,7 @@ class TripletMatcher:
         fields_matched = sum(1 for f in field_matches.values() if f['score'] > 0.7)
         confidence = min(
             settings.confidence_base +
-            (fields_matched / len(self.field_weights)) * settings.confidence_range,
+            (fields_matched / (len(self.field_weights) + 1)) * settings.confidence_range,
             1.0
         )
         

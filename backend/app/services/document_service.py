@@ -11,7 +11,7 @@ from app.models.audit_log import AuditLog
 from app.pipeline.preprocessor import Preprocessor
 from app.pipeline.ocr_engine import OCREngine
 from app.pipeline.entity_extractor import EntityExtractor
-from app.pipeline.embedding_service import EmbeddingService
+from app.services.embedding_service import EmbeddingService
 from app.config import get_settings
 from app.services.websocket_manager import ws_manager
 import asyncio
