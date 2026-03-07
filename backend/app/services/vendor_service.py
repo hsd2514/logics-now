@@ -162,7 +162,8 @@ class VendorService:
                 'high_risk_count': 0,
                 'avg_risk_score': 0.0,
                 'total_transactions': 0,
-                'avg_transaction_value': 0.0
+                'avg_transaction_value': 0.0,
+                'risk_distribution': {'low': 0, 'medium': 0, 'high': 0, 'critical': 0}
             }
         
         total_vendors = len(profiles)
