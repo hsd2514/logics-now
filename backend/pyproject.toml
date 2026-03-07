@@ -1,0 +1,33 @@
+[project]
+name = "freightiq-backend"
+version = "0.1.0"
+description = "FreightIQ - AI Document Intelligence for LR-POD-Invoice Matching"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi[standard]",
+    "uvicorn[standard]",
+    "sqlalchemy",
+    "aiosqlite",
+    "python-multipart",
+    "pytesseract",
+    "opencv-python",
+    "pillow",
+    "numpy",
+    "scikit-learn",
+    "python-dotenv",
+    "websockets",
+    "pydantic",
+    "pydantic-settings",
+    "jinja2",
+    "httpx",
+    "google-genai>=1.66.0",
+]
+
+
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
