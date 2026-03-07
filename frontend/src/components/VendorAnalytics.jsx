@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/Toaster';
 import { AlertTriangle, TrendingUp, Users, DollarSign, Activity, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { VendorRouteGlobe } from './VendorRouteGlobe';
 
 export function VendorAnalytics() {
   const [analytics, setAnalytics] = useState(null);
@@ -65,6 +66,24 @@ export function VendorAnalytics() {
     return <Badge className="bg-green-600 dark:bg-green-500 text-white">Low</Badge>;
   };
 
+  const getFlags = (profile) => {
+    const flags = [];
+    const total = Number(profile.total_invoices || 0);
+    const avg = Number(profile.avg_amount || 0);
+    const std = Number(profile.std_deviation || 0);
+    const freq = Number(profile.avg_frequency || 0);
+    const fraudRate = Number(profile.historical_fraud_rate || 0);
+    const cv = avg > 0 ? std / avg : 0;
+
+    if (fraudRate > 0) flags.push({ label: 'Fraud history', tone: 'destructive' });
+    if (total > 0 && total < 5) flags.push({ label: 'New vendor', tone: 'warning' });
+    if (total > 0 && freq < 1) flags.push({ label: 'Low frequency', tone: 'warning' });
+    if (cv > 0.3) flags.push({ label: 'High variance', tone: 'warning' });
+    if (Number(profile.risk_score || 0) >= 50) flags.push({ label: 'High risk', tone: 'destructive' });
+
+    return flags.slice(0, 3);
+  };
+
   if (loading) {
     return <div className="p-8 text-center">Loading vendor analytics...</div>;
   }
@@ -90,10 +109,10 @@ export function VendorAnalytics() {
     }));
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6 min-w-0">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold">Vendor Analytics</h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+        <h2 className="text-2xl sm:text-3xl font-bold">Vendor Analytics</h2>
         <Button onClick={refreshProfiles} variant="outline" size="sm">
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
@@ -151,10 +170,16 @@ export function VendorAnalytics() {
         </Card>
       </div>
 
+      {/* 3D Route Visualization */}
+      <div>
+        <h3 className="text-2xl font-semibold mb-4">Shipping Routes Visualization</h3>
+        <VendorRouteGlobe vendors={profiles} height={420} />
+      </div>
+
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Risk Distribution Pie Chart */}
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Risk Distribution</CardTitle>
           </CardHeader>
@@ -187,10 +212,10 @@ export function VendorAnalytics() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topRiskyVendors} layout="vertical">
+              <BarChart data={topRiskyVendors} layout="vertical" margin={{ left: 8, right: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" domain={[0, 100]} />
-                <YAxis dataKey="name" type="category" width={150} />
+                <YAxis dataKey="name" type="category" width={90} />
                 <Tooltip />
                 <Bar dataKey="risk" fill="#ef4444" />
               </BarChart>
@@ -200,15 +225,15 @@ export function VendorAnalytics() {
       </div>
 
       {/* Vendor Profiles Table */}
-      <Card>
+      <Card className="min-w-0">
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
             <CardTitle>Vendor Profiles</CardTitle>
             <div className="flex gap-2">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-1 border rounded-md text-sm"
+                className="px-3 py-1 border rounded-md text-sm w-full sm:w-auto"
               >
                 <option value="risk_score">Sort by Risk</option>
                 <option value="total_invoices">Sort by Volume</option>
@@ -220,7 +245,7 @@ export function VendorAnalytics() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[720px]">
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-4">Vendor Name</th>
@@ -228,13 +253,14 @@ export function VendorAnalytics() {
                   <th className="text-right py-3 px-4">Transactions</th>
                   <th className="text-right py-3 px-4">Avg Amount</th>
                   <th className="text-right py-3 px-4">Fraud Rate</th>
+                  <th className="text-left py-3 px-4">Flags</th>
                   <th className="text-center py-3 px-4">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {profiles.map((profile) => (
                   <tr key={profile.vendor_name} className="border-b hover:bg-muted/50">
-                    <td className="py-3 px-4 font-medium">{profile.vendor_name}</td>
+                    <td className="py-3 px-4 font-medium max-w-[240px] truncate" title={profile.vendor_name}>{profile.vendor_name}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         {getRiskBadge(profile.risk_score)}
@@ -249,6 +275,22 @@ export function VendorAnalytics() {
                     </td>
                     <td className="text-right py-3 px-4">
                       {(profile.historical_fraud_rate * 100).toFixed(1)}%
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-wrap gap-1">
+                        {getFlags(profile).length === 0 ? (
+                          <Badge variant="outline">Normal</Badge>
+                        ) : (
+                          getFlags(profile).map((flag) => (
+                            <Badge
+                              key={`${profile.vendor_name}-${flag.label}`}
+                              variant={flag.tone === 'destructive' ? 'destructive' : 'secondary'}
+                            >
+                              {flag.label}
+                            </Badge>
+                          ))
+                        )}
+                      </div>
                     </td>
                     <td className="text-center py-3 px-4">
                       <Button

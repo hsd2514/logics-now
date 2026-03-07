@@ -9,9 +9,8 @@ from app.pipeline.embedding_service import EmbeddingService as LocalEmbeddingSer
 
 class EmbeddingService:
     """Generate and compare document embeddings using Gemini's embedding API"""
-    
-    # Use the correct Gemini embedding model (embedding-001 for v1beta, models/text-embedding-004 for v1alpha)
-    EMBEDDING_MODEL = "models/text-embedding-004"
+
+    EMBEDDING_MODEL = get_settings().gemini_embedding_model or "models/text-embedding-004"
     
     def __init__(self):
         settings = get_settings()

@@ -32,6 +32,7 @@ class NLQueryParser:
 
     def __init__(self):
         self.client = genai.Client(api_key=settings.google_api_key) if settings.google_api_key else None
+        self._model = settings.gemini_model
 
     def parse(self, query: str) -> Dict:
         """Parse natural language query into filters."""
@@ -40,7 +41,7 @@ class NLQueryParser:
 
         try:
             response = self.client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=self._model,
                 contents=query,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,
@@ -62,7 +63,7 @@ class NLQueryParser:
 
         try:
             async for chunk in await self.client.aio.models.generate_content_stream(
-                model="gemini-2.5-flash",
+                model=self._model,
                 contents=query,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,

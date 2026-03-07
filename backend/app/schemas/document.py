@@ -28,6 +28,8 @@ class DocumentCreate(BaseModel):
     file_name: str
 
 class DocumentResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
     id: str
     type: str
     file_name: str
@@ -38,9 +40,6 @@ class DocumentResponse(BaseModel):
     entities: Optional[EntityExtraction] = None
     processing_time_ms: Optional[Dict[str, float]] = None
     status: str
-    
-    class Config:
-        from_attributes = True
 
 class DocumentListResponse(BaseModel):
     documents: List[DocumentResponse]

@@ -118,7 +118,7 @@ export function DashboardCharts({ triplets = [], fraudAlerts = [], stats = null 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
       {/* Confidence Histogram */}
-      <Card>
+      <Card className="min-w-0">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <BarChart2 className="h-4 w-4 text-blue-500" />
@@ -147,7 +147,7 @@ export function DashboardCharts({ triplets = [], fraudAlerts = [], stats = null 
       </Card>
 
       {/* Fraud Breakdown */}
-      <Card>
+      <Card className="min-w-0">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <PieIcon className="h-4 w-4 text-red-500" />
@@ -185,7 +185,7 @@ export function DashboardCharts({ triplets = [], fraudAlerts = [], stats = null 
       </Card>
 
       {/* Status Distribution */}
-      <Card>
+      <Card className="min-w-0">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-green-500" />
@@ -215,7 +215,7 @@ export function DashboardCharts({ triplets = [], fraudAlerts = [], stats = null 
       </Card>
 
       {/* Trends */}
-      <Card>
+      <Card className="min-w-0">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <Activity className="h-4 w-4 text-purple-500" />

@@ -72,7 +72,8 @@ export const getPredictiveAlerts = () => api.get('/fraud/predictions')
 export const exportFraudAlerts = (format = 'csv') => api.get(`/fraud/export?format=${format}`, { responseType: 'blob' })
 
 // Demo
-export const generateDemo = (anomaly = false) => api.post('/demo/generate', null, { params: { anomaly } })
+export const generateDemo = (anomaly = false, partial = false) =>
+  api.post('/demo/generate', null, { params: { anomaly, partial } })
 
 // AI
 export const chatWithDocument = async (documentId, message, onChunk) => {
@@ -154,5 +155,11 @@ export const getVendorAnalytics = () => api.get('/vendors/analytics')
 export const getVendorProfiles = (params) => api.get('/vendors/profiles', { params })
 export const getVendorDetails = (vendorName) => api.get(`/vendors/${encodeURIComponent(vendorName)}`)
 export const refreshVendorProfiles = () => api.post('/vendors/refresh')
+
+// Contract rates
+export const createContractRate = (data) => api.post('/contract-rates', data)
+export const getContractRates = (params) => api.get('/contract-rates', { params })
+export const updateContractRate = (id, data) => api.put(`/contract-rates/${id}`, data)
+export const deleteContractRate = (id) => api.delete(`/contract-rates/${id}`)
 
 export default api

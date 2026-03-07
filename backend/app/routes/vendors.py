@@ -27,23 +27,7 @@ def list_vendor_profiles(
     profiles, total = vendor_service.get_all_profiles(db, skip, limit, sort_by)
     
     return {
-        'profiles': [
-            {
-                'vendor_name': p.vendor_name,
-                'risk_score': p.risk_score,
-                'total_invoices': p.total_invoices,
-                'avg_amount': p.avg_amount,
-                'std_deviation': p.std_deviation,
-                'min_amount': p.min_amount,
-                'max_amount': p.max_amount,
-                'avg_frequency': p.avg_frequency,
-                'historical_fraud_rate': p.historical_fraud_rate,
-                'route_patterns': p.route_patterns,
-                'first_seen': p.first_seen.isoformat() if p.first_seen else None,
-                'last_invoice_date': p.last_invoice_date.isoformat() if p.last_invoice_date else None
-            }
-            for p in profiles
-        ],
+        'profiles': profiles,
         'total': total,
         'skip': skip,
         'limit': limit
@@ -54,9 +38,7 @@ def list_vendor_profiles(
 def get_vendor_details(vendor_name: str, db: Session = Depends(get_db)):
     """Get detailed information about a specific vendor."""
     try:
-        print(f"Getting details for vendor: {vendor_name}")
         details = vendor_service.get_vendor_details(db, vendor_name)
-        print(f"Got details: {details is not None}")
         
         if not details:
             raise HTTPException(status_code=404, detail="Vendor not found")
@@ -65,10 +47,7 @@ def get_vendor_details(vendor_name: str, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error in get_vendor_details: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error loading vendor details: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error loading vendor details")
 
 
 @router.post("/refresh")

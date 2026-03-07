@@ -18,6 +18,8 @@ class DocumentChat:
 
     def __init__(self):
         self.client = genai.Client(api_key=settings.google_api_key) if settings.google_api_key else None
+        self._model = settings.gemini_model
+        self._ctx_chars = settings.chat_context_chars
 
     async def chat_stream(
         self,
@@ -32,7 +34,7 @@ class DocumentChat:
             return
 
         context = f"""Document Content:
-{document_text[:3000]}
+{document_text[:self._ctx_chars]}
 
 Extracted Entities:
 - Shipment ID: {document_entities.get('shipment_id', 'N/A')}
@@ -64,7 +66,7 @@ Extracted Entities:
 
         try:
             async for chunk in await self.client.aio.models.generate_content_stream(
-                model="gemini-2.5-flash",
+                model=self._model,
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,
@@ -87,14 +89,14 @@ Extracted Entities:
             return "Error: Google API key not configured"
 
         context = f"""Document Content:
-{document_text[:3000]}
+{document_text[:self._ctx_chars]}
 
 Extracted Entities:
 {document_entities}
 """
         try:
             response = self.client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=self._model,
                 contents=f"Document:\n{context}\n\nQuestion: {user_message}",
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,

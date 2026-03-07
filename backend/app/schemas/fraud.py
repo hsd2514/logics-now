@@ -10,6 +10,8 @@ class FraudAlertDetail(BaseModel):
     severity: str  # LOW, MEDIUM, HIGH, CRITICAL
 
 class FraudAlertResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
     id: str
     triplet_id: str
     risk_score: float
@@ -20,9 +22,6 @@ class FraudAlertResponse(BaseModel):
     status: str
     created_at: datetime
     resolved_at: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
 
 class FraudAlertListResponse(BaseModel):
     alerts: List[FraudAlertResponse]

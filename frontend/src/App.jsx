@@ -3,7 +3,7 @@ import {
   FileText, Upload, LayoutDashboard, ShieldAlert,
   RefreshCw, Wifi, WifiOff, Moon, Sun, BarChart2,
   ChevronLeft, ChevronRight, Sparkles, AlertTriangle,
-  Download, Users, PackageCheck,
+  Download, Users, PackageCheck, ShieldCheck,
 } from 'lucide-react'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
@@ -20,6 +20,7 @@ import { AttentionHeatmap } from './components/AttentionHeatmap'
 import { DashboardCharts } from './components/DashboardCharts'
 import { VendorAnalytics } from './components/VendorAnalytics'
 import { BatchUploadProgress } from './components/BatchUploadProgress'
+import { AdminDemoDashboard } from './components/AdminDemoDashboard'
 import { CardSkeleton, StatsCardSkeleton } from './components/Skeleton'
 import { useDocuments } from './hooks/useDocuments'
 import { useTriplets } from './hooks/useTriplets'
@@ -51,6 +52,7 @@ function App() {
     { key: 'batch', label: 'Batch Upload', icon: PackageCheck },
     { key: 'vendors', label: 'Vendors', icon: Users },
     { key: 'fraud', label: 'Fraud Detection', icon: ShieldAlert },
+    { key: 'admin', label: 'Admin Demo', icon: ShieldCheck },
   ]
 
 
@@ -325,7 +327,40 @@ function App() {
 
         {/* Tab Content */}
         <Tabs value={activeTab} onValueChange={t => { setActiveTab(t); setPage(1) }}>
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
+            <aside className="rounded-xl border bg-card p-3 h-fit lg:sticky lg:top-20">
+              <div className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Navigation</div>
+              <div className="space-y-1">
+                {navItems.map(item => {
+                  const Icon = item.icon
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={() => setActiveTab(item.key)}
+                      className={`w-full flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors ${activeTab === item.key ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                        }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </span>
+                      {item.key === 'fraud' && (stats?.fraud?.open_alerts || 0) > 0 && (
+                        <span className="text-[10px] rounded px-1.5 py-0.5 bg-red-500 text-white">{stats.fraud.open_alerts}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="mt-4 pt-4 border-t space-y-2">
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => handleExportTriplets('csv')}>
+                  <Download className="h-4 w-4 mr-2" /> Export Triplets CSV
+                </Button>
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => handleExportTriplets('pdf')}>
+                  <Download className="h-4 w-4 mr-2" /> Export Triplets PDF
+                </Button>
+              </div>
+            </aside>
+            <section className="min-w-0">
 
               {/* Dashboard */}
               <TabsContent value="dashboard">
@@ -566,9 +601,15 @@ function App() {
                   <FraudAlertPanel />
                 </div>
               </TabsContent>
-            </div>
-          </Tabs>
-        </main>
+
+              {/* Admin demo */}
+              <TabsContent value="admin">
+                <AdminDemoDashboard onRefresh={handleRefresh} />
+              </TabsContent>
+            </section>
+          </div>
+        </Tabs>
+      </main>
 
       {/* Comparison Modal */}
       {compareTriplet && (
