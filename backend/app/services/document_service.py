@@ -11,6 +11,7 @@ from app.models.audit_log import AuditLog
 from app.pipeline.preprocessor import Preprocessor
 from app.pipeline.ocr_engine import OCREngine
 from app.pipeline.entity_extractor import EntityExtractor
+from app.services.embedding_service import EmbeddingService
 from app.config import get_settings
 from app.services.websocket_manager import ws_manager
 import asyncio
@@ -40,6 +41,7 @@ class DocumentService:
         self.preprocessor = Preprocessor()
         self.ocr_engine = OCREngine()
         self.entity_extractor = EntityExtractor()
+        self.embedding_service = EmbeddingService()
         self.upload_dir = settings.upload_dir
         
         # Ensure upload directory exists
@@ -148,6 +150,9 @@ class DocumentService:
             self.ocr_engine.blocks_to_dict, text_blocks
         )
         document.entities = entities
+        document.embedding = await asyncio.to_thread(
+            self.embedding_service.embed_document, ocr_text, entities
+        )
         document.status = DocumentStatus.PROCESSED
         
         db.commit()
@@ -191,6 +196,9 @@ class DocumentService:
         document.ocr_confidence = 1.0  # Perfect extraction from HTML
         document.text_blocks = []  # No spatial data for HTML
         document.entities = entities
+        document.embedding = await asyncio.to_thread(
+            self.embedding_service.embed_document, extracted_text, entities
+        )
         document.status = DocumentStatus.PROCESSED
         
         db.commit()
