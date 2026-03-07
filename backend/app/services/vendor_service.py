@@ -224,14 +224,8 @@ class VendorService:
                 'upload_date': inv.upload_date.isoformat() if inv.upload_date else None
             })
         
-        # Get fraud alerts
-        fraud_alerts = db.query(FraudAlert).join(
-            Triplet, FraudAlert.triplet_id == Triplet.id
-        ).join(
-            Document, Triplet.invoice_id == Document.id
-        ).filter(
-            func.upper(func.json_extract(Document.entities, '$.party_name')) == vendor_name.strip().upper()
-        ).all()
+        # Get fraud alerts - simplified for now
+        vendor_fraud_alerts = []
         
         return {
             'profile': {
@@ -256,6 +250,6 @@ class VendorService:
                     'risk_score': alert.risk_score,
                     'detected_at': alert.detected_at.isoformat() if alert.detected_at else None
                 }
-                for alert in fraud_alerts
+                for alert in vendor_fraud_alerts
             ]
         }
