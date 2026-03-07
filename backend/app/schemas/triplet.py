@@ -37,9 +37,9 @@ class TripletResponse(BaseModel):
     ocr_accuracy: Optional[float] = None
     ner_confidence: Optional[float] = None
     rule_pass_score: Optional[float] = None
-    validation_details: Optional[List[ValidationDetail]] = None
+    validation_details: Optional[Any] = None
     ai_explanation: Optional[str] = None
-    attention_map: Optional[List[AttentionRegion]] = None
+    attention_map: Optional[Any] = None
     status: str
     created_at: datetime
     reviewed_at: Optional[datetime] = None
