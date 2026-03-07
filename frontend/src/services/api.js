@@ -44,6 +44,8 @@ export const getTriplets = (params = {}) => {
   return api.get('/triplets', { params: query })
 }
 
+export const runMatching = () => api.post('/triplets/match')
+export const getTriplet = (id) => api.get(`/triplets/${id}`)
 export const approveTriplet = (id, data) => api.post(`/triplets/${id}/approve`, data)
 export const rejectTriplet = (id, data) => api.post(`/triplets/${id}/reject`, data)
 
