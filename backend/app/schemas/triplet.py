@@ -12,21 +12,12 @@ class ValidationDetail(BaseModel):
 
 class AttentionRegion(BaseModel):
     document_type: str  # LR, POD, INVOICE
-    field: str
-    score: float
-    # Raw pixel coords
     x: float
     y: float
     width: float
     height: float
-    # Real document canvas dimensions (pixels)
-    doc_width: Optional[float] = None
-    doc_height: Optional[float] = None
-    # Normalised coordinates [0, 1] — use these for rendering
-    x_norm: Optional[float] = None
-    y_norm: Optional[float] = None
-    w_norm: Optional[float] = None
-    h_norm: Optional[float] = None
+    score: float
+    field: str
 
 class MatchResult(BaseModel):
     lr_id: str
@@ -46,9 +37,9 @@ class TripletResponse(BaseModel):
     ocr_accuracy: Optional[float] = None
     ner_confidence: Optional[float] = None
     rule_pass_score: Optional[float] = None
-    validation_details: Optional[List[ValidationDetail]] = None
+    validation_details: Optional[Any] = None
     ai_explanation: Optional[str] = None
-    attention_map: Optional[List[AttentionRegion]] = None
+    attention_map: Optional[Any] = None
     status: str
     created_at: datetime
     reviewed_at: Optional[datetime] = None
