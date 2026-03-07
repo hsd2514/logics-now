@@ -2,9 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
+from typing import List
+from datetime import datetime
 
 from app.database import get_db
 from app.models.fraud_alert import FraudAlert, AlertStatus
+from app.models.audit_log import AuditLog
 from app.schemas.fraud import FraudAlertResponse, FraudAlertListResponse, PredictiveAlertResponse
 from app.ai.vendor_patterns import VendorPatternLearner
 
@@ -71,12 +74,23 @@ def dismiss_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     
-    from datetime import datetime
     alert.status = AlertStatus.DISMISSED
     alert.resolved_at = datetime.now()
     alert.resolved_by = current_user
     alert.resolution_notes = action.notes
     
+    # Audit log: record the human decision to dismiss
+    audit = AuditLog(
+        triplet_id=alert.triplet_id,
+        action="FRAUD_DISMISSED",
+        ai_generated=(
+            f"Fraud alert of type '{alert.alert_type}' (risk {alert.risk_score * 100:.0f}%) "
+            f"was dismissed by reviewer. Notes: {notes or 'None'}."
+        ),
+        context={"alert_id": alert_id, "alert_type": alert.alert_type, "risk_score": alert.risk_score},
+        user_id=user_id,
+    )
+    db.add(audit)
     db.commit()
     
     return {"message": "Alert dismissed", "alert_id": alert_id}
@@ -96,12 +110,23 @@ def confirm_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     
-    from datetime import datetime
     alert.status = AlertStatus.CONFIRMED
     alert.resolved_at = datetime.now()
     alert.resolved_by = current_user
     alert.resolution_notes = action.notes
     
+    # Audit log: record the human decision to confirm fraud
+    audit = AuditLog(
+        triplet_id=alert.triplet_id,
+        action="FRAUD_CONFIRMED",
+        ai_generated=(
+            f"Fraud alert of type '{alert.alert_type}' (risk {alert.risk_score * 100:.0f}%) "
+            f"was confirmed as fraud by reviewer. Notes: {notes or 'None'}."
+        ),
+        context={"alert_id": alert_id, "alert_type": alert.alert_type, "risk_score": alert.risk_score},
+        user_id=user_id,
+    )
+    db.add(audit)
     db.commit()
     
     return {"message": "Alert confirmed as fraud", "alert_id": alert_id}

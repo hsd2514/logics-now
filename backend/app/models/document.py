@@ -45,3 +45,4 @@ class Document(Base):
     lr_triplets = relationship("Triplet", foreign_keys="Triplet.lr_id", back_populates="lr")
     pod_triplets = relationship("Triplet", foreign_keys="Triplet.pod_id", back_populates="pod")
     invoice_triplets = relationship("Triplet", foreign_keys="Triplet.invoice_id", back_populates="invoice")
+    audit_logs = relationship("AuditLog", foreign_keys="AuditLog.document_id", back_populates="document")

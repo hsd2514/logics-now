@@ -7,6 +7,7 @@ from fastapi import UploadFile
 from html.parser import HTMLParser
 
 from app.models.document import Document, DocumentStatus
+from app.models.audit_log import AuditLog
 from app.pipeline.preprocessor import Preprocessor
 from app.pipeline.ocr_engine import OCREngine
 from app.pipeline.entity_extractor import EntityExtractor
@@ -76,9 +77,26 @@ class DocumentService:
         # Process document
         try:
             document = await self.process_document(db, document)
+            # Audit log: successful upload & processing
+            self._write_audit(
+                db, document, action="UPLOADED",
+                ai_text=(
+                    f"{doc_type.upper()} document '{file.filename}' uploaded and processed successfully. "
+                    f"OCR confidence: {document.ocr_confidence or 0:.1%}. "
+                    f"Entities extracted: {len(document.entities or {})} fields."
+                ),
+                context={"file_name": file.filename, "doc_type": doc_type.upper(), "status": document.status}
+            )
+            db.commit()
         except Exception as e:
             document.status = DocumentStatus.ERROR
             document.processing_error = str(e)
+            # Audit log: upload failed
+            self._write_audit(
+                db, document, action="UPLOAD_ERROR",
+                ai_text=f"{doc_type.upper()} document '{file.filename}' processing failed: {str(e)}",
+                context={"file_name": file.filename, "doc_type": doc_type.upper(), "error": str(e)}
+            )
             db.commit()
         
         return document
@@ -221,6 +239,17 @@ class DocumentService:
         if not document:
             return False
         
+        # Audit log: record deletion before the record is gone
+        self._write_audit(
+            db, document, action="DELETED",
+            ai_text=(
+                f"{document.type} document '{document.file_name}' (id: {document.id}) "
+                f"was deleted from the system."
+            ),
+            context={"file_name": document.file_name, "doc_type": document.type, "status": document.status}
+        )
+        db.flush()  # Persist audit before cascade-deleting the document
+        
         # Delete file
         if os.path.exists(document.file_path):
             os.remove(document.file_path)
@@ -228,3 +257,25 @@ class DocumentService:
         db.delete(document)
         db.commit()
         return True
+
+    # ── Private helpers ──────────────────────────────────────────────────────
+
+    def _write_audit(
+        self,
+        db: Session,
+        document: Document,
+        action: str,
+        ai_text: str,
+        context: dict = None,
+        user_id: str = None
+    ) -> None:
+        """Persist a single AuditLog record for a document-level event."""
+        log = AuditLog(
+            document_id=document.id,
+            triplet_id=None,
+            action=action,
+            ai_generated=ai_text,
+            context=context or {},
+            user_id=user_id,
+        )
+        db.add(log)
